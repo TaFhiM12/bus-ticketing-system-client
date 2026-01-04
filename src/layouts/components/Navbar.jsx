@@ -1,53 +1,125 @@
 import React from "react";
 import { NavLink } from "react-router";
+import { Bus, Ticket, Phone, User, Home, Info } from "lucide-react";
 
 const Navbar = () => {
-  const links = (
-    <>
-      <li><NavLink>Home</NavLink></li>
-      <li><NavLink>My Ticket</NavLink></li>
-      <li><NavLink>Contact</NavLink></li>
-      <li><NavLink>About</NavLink></li>
-    </>
-  );
+  const links = [
+    { path: '/', label: 'Home', icon: Home },
+    { path: '/my-tickets', label: 'My Tickets', icon: Ticket },
+    { path: '/contact', label: 'Contact', icon: Phone },
+    { path: '/about', label: 'About', icon: Info }
+  ];
+
   return (
-    <div className="navbar bg-[#295A55] shadow-sm">
+    <div className="bg-[#295A55] shadow-lg fixed top-0 left-0 right-0 z-50">
+      <nav className="navbar max-w-7xl mx-auto px-4 ">
       <div className="navbar-start">
-        <div className="dropdown">
-          <div tabIndex={0} role="button" className="btn btn-ghost lg:hidden">
+        {/* Mobile Menu Button */}
+        <div className="dropdown lg:hidden">
+          <div tabIndex={0} role="button" className="btn btn-ghost text-white hover:bg-white/10">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 text-white"
+              className="h-6 w-6"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
             >
-              {" "}
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth="2"
-                d="M4 6h16M4 12h8m-8 6h16"
-              />{" "}
+                d="M4 6h16M4 12h16M4 18h16"
+              />
             </svg>
           </div>
           <ul
-            tabIndex="-1"
-            className="menu menu-sm dropdown-content text-white rounded-box z-1 mt-3 w-52 p-2 shadow"
+            tabIndex={0}
+            className="menu menu-lg dropdown-content bg-[#295A55] text-white rounded-box z-[100] mt-3 w-64 p-4 shadow-2xl border border-white/10"
           >
-            {links}
+            {links.map((link) => (
+              <li key={link.path} className="my-1">
+                <NavLink
+                  to={link.path}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 text-lg px-4 py-3 rounded-lg transition-all duration-200 ${
+                      isActive 
+                        ? 'bg-white text-[#295A55] font-semibold' 
+                        : 'hover:bg-white/10 hover:text-white'
+                    }`
+                  }
+                >
+                  <link.icon className="w-5 h-5" />
+                  {link.label}
+                </NavLink>
+              </li>
+            ))}
+            
           </ul>
         </div>
-        <a className="btn btn-ghost text-xl text-white">Bus Ticket</a>
+
+        {/* Logo */}
+        <div className=" items-center gap-3 ml-4">
+        
+          <span className="text-2xl font-bold text-white hidden sm:block">
+            BUS <span className="text-cyan-200">VARA</span>
+          </span>
+        </div>
       </div>
+
+      {/* Desktop Navigation */}
       <div className="navbar-center hidden lg:flex">
-        <ul className="menu menu-horizontal px-1 text-white">
-          {links}
+        <ul className="menu menu-horizontal gap-2 px-1">
+          {links.map((link) => (
+            <li key={link.path}>
+              <NavLink
+                to={link.path}
+                className={({ isActive }) =>
+                  `flex items-center gap-2 px-5 py-3 rounded-lg text-white font-medium transition-all duration-300 relative group ${
+                    isActive 
+                      ? 'bg-white/20 shadow-lg' 
+                      : 'hover:bg-white/10 hover:shadow-md'
+                  }`
+                }
+              >
+                <link.icon className="w-5 h-5" />
+                {link.label}
+                
+                {/* Active Indicator */}
+                {({ isActive }) => isActive && (
+                  <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-3 h-1 bg-cyan-300 rounded-full"></div>
+                )}
+                
+                {/* Hover Indicator */}
+                <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-1 bg-cyan-300 rounded-full transition-all duration-300 group-hover:w-3/4"></div>
+              </NavLink>
+            </li>
+          ))}
         </ul>
       </div>
-      <div className="navbar-end">
-        <NavLink className="btn text-[#295A55]">Login</NavLink>
+
+      {/* Right Side */}
+      <div className="navbar-end mr-4">
+        {/* Login Button - Desktop */}
+        <div className="hidden lg:flex items-center gap-4">
+          <NavLink 
+            to="/login"
+            className="btn bg-white text-[#295A55] border-none hover:from-cyan-500 hover:to-cyan-600 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 px-8"
+          >
+            Login
+          </NavLink>
+        </div>
+
+        {/* Login Button - Mobile */}
+        <div className="lg:hidden">
+          <NavLink 
+            to="/login"
+            className="btn btn-sm bg-white text-[#295A55] hover:bg-gray-100 px-4"
+          >
+            Login
+          </NavLink>
+        </div>
       </div>
+    </nav>
     </div>
   );
 };

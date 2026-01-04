@@ -23,22 +23,26 @@ const Footer = () => {
                 Bus Vara is your trusted partner for safe and comfortable bus travel across Bangladesh. 
                 We provide the best routes with reliable service and affordable prices.
               </p>
-              
-              {/* Contact Info */}
-              <div className="space-y-3 pt-4">
-                <div className="flex items-center gap-3">
-                  <Phone className="w-4 h-4 text-white/80" />
-                  <span className="text-white/80 text-sm">+880 1234-567890</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Mail className="w-4 h-4 text-white/80" />
-                  <span className="text-white/80 text-sm">support@busvara.com</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <MapPin className="w-4 h-4 text-white/80" />
-                  <span className="text-white/80 text-sm">Dhaka, Bangladesh</span>
+              {/* Social Media */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Follow Us</h3>
+                <div className="flex gap-4">
+                  <a href="#" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+                    <Facebook className="w-5 h-5" />
+                  </a>
+                  <a href="#" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+                    <Twitter className="w-5 h-5" />
+                  </a>
+                  <a href="#" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+                    <Instagram className="w-5 h-5" />
+                  </a>
+                  <a href="#" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+                    <Youtube className="w-5 h-5" />
+                  </a>
                 </div>
               </div>
+
+             
             </div>
 
             {/* Policies */}
@@ -131,41 +135,7 @@ const Footer = () => {
                     Card
                   </div>
                 </div>
-              </div>
-
-              {/* Social Media */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Follow Us</h3>
-                <div className="flex gap-4">
-                  <a href="#" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
-                    <Facebook className="w-5 h-5" />
-                  </a>
-                  <a href="#" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
-                    <Twitter className="w-5 h-5" />
-                  </a>
-                  <a href="#" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
-                    <Instagram className="w-5 h-5" />
-                  </a>
-                  <a href="#" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
-                    <Youtube className="w-5 h-5" />
-                  </a>
-                </div>
-              </div>
-
-              {/* Newsletter */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Newsletter</h3>
-                <div className="flex gap-2">
-                  <input 
-                    type="email" 
-                    placeholder="Your email" 
-                    className="flex-1 px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30"
-                  />
-                  <button className="px-4 py-2 bg-white text-[#295A55] rounded-lg font-semibold hover:bg-gray-100 transition-colors">
-                    Subscribe
-                  </button>
-                </div>
-              </div>
+              </div>             
             </div>
           </div>
         </div>
@@ -177,13 +147,6 @@ const Footer = () => {
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="text-white/70 text-sm">
               <p>© 2025 busvara.com. All rights reserved.</p>
-            </div>
-            
-            <div className="flex items-center gap-6 text-white/70 text-sm">
-              <a href="#" className="hover:text-white transition-colors">Sitemap</a>
-              <a href="#" className="hover:text-white transition-colors">FAQ</a>
-              <a href="#" className="hover:text-white transition-colors">Help Center</a>
-              <a href="#" className="hover:text-white transition-colors">Careers</a>
             </div>
           </div>
         </div>

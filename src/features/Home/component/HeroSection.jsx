@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import HeroSearchForm from "../../hero/HeroSearchForm";
 
-
 const HeroSection = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const totalSlides = 4;
@@ -29,8 +28,9 @@ const HeroSection = () => {
   ];
   
   return (
-    <div className="relative min-h-screen ">
-      <div className="relative h-[90vh] overflow-hidden">
+    <div className="relative min-h-screen">
+      {/* Carousel Container */}
+      <div className="relative h-[90vh] md:h-[85vh] lg:h-[90vh] overflow-hidden">
         <div className="relative w-full h-full">
           {carouselImages.map((image, index) => (
             <div 
@@ -46,43 +46,42 @@ const HeroSection = () => {
               />
               
               {/* Overlay */}
-              <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/40 to-transparent"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent"></div>
             </div>
           ))}
         </div>
 
-        <div className="absolute inset-0 flex items-center justify-center z-10 pt-24">
+        {/* Search Form - Responsive Positioning */}
+        <div className="absolute inset-0 z-10 flex items-center justify-center pt-16 md:pt-20 lg:pt-24 px-2 sm:px-4">
           <HeroSearchForm />
         </div>
       </div>
 
       {/* Indicators Section - Outside and Below Carousel */}
-      <div className="relative py-2">
-        <div className="flex justify-center items-center">
+      <div className="relative py-2 bg-gray-50">
+        <div className="flex justify-center items-center space-x-1 sm:space-x-2">
           {Array.from({ length: totalSlides }).map((_, index) => (
             <button
               key={index}
               onClick={() => goToSlide(index)}
-              className="group flex flex-col items-center  px-1 rounded-lg hover:bg-white/5 transition-all duration-300"
+              className="group flex flex-col items-center px-1 sm:px-2 py-1 rounded-lg hover:bg-white/5 transition-all duration-300"
               aria-label={`Go to slide ${index + 1}`}
             >
               {/* Indicator Bar */}
               <div className="relative">
                 <div className={`
-                  h-1 rounded-full transition-all duration-500 ease-out
+                  h-1 sm:h-1.5 rounded-full transition-all duration-500 ease-out
                   ${currentSlide === index 
-                    ? 'w-10 bg-linear-to-r from-[#295A55] to-[#3A7D72] shadow-lg shadow-[#295A55]/50' 
-                    : 'w-3 bg-gray-500 group-hover:w-12 group-hover:bg-gray-400'
+                    ? 'w-8 sm:w-10 md:w-12 bg-gradient-to-r from-[#295A55] to-[#3A7D72] shadow-lg shadow-[#295A55]/50' 
+                    : 'w-3 sm:w-4 bg-gray-400 group-hover:w-6 sm:group-hover:w-8 md:group-hover:w-10 group-hover:bg-gray-500'
                   }
                 `}>
                   {/* Animated Progress Bar */}
                   {currentSlide === index && (
-                    <div className="absolute inset-0 bg-linear-to-r from-white/50 to-transparent rounded-full animate-pulse"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/50 to-transparent rounded-full animate-pulse"></div>
                   )}
                 </div>
               </div>
-              
-             
             </button>
           ))}
         </div>
