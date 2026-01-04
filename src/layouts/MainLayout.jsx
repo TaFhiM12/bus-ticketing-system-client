@@ -10,10 +10,9 @@ const MainLayout = () => {
         <Navbar />
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full">
+      <main className="flex-1 max-w-375 mx-auto w-full mb-10">
         <Outlet />
       </main>
-
       <footer>
         <Footer />
       </footer>
