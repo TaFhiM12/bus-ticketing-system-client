@@ -56,10 +56,10 @@ const HeroSearchForm = () => {
   
   const fetchFilters = async () => {
     try {
-      const response = await axios.get("https://bus-ticketing-system-server-1.onrender.com/api/buses/filters");
+      const response = await axios.get("https://bus-ticketing-system-server-2.onrender.com/api/buses/filters");
       setAvailableFilters(response.data);
     } catch (error) {
-      console.log("Using default filters");
+      console.log("Using default filters", error);
       setAvailableFilters({
         operators: ["Hanif Enterprise", "Shyamoli Paribahan", "ENA Paribahan", "Liton Enterprise", "Green Line Paribahan", "Saintmartin Travels", "Soudia Paribahan"],
         busTypes: ["AC Business", "AC Seater", "Non-AC Seater", "AC Sleeper", "Executive"],
@@ -82,7 +82,7 @@ const HeroSearchForm = () => {
     }
     
     try {
-      const response = await axios.get("https://bus-ticketing-system-server-1.onrender.com/api/search/suggestions", {
+      const response = await axios.get("https://bus-ticketing-system-server-2.onrender.com/api/search/suggestions", {
         params: { q: value }
       });
       

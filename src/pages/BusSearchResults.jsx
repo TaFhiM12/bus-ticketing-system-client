@@ -135,7 +135,7 @@ const BusSearchResults = () => {
         return;
       }
       
-      const response = await axios.post("http://localhost:5001/api/buses/search", {
+      const response = await axios.post("https://bus-ticketing-system-server-2.onrender.com/api/buses/search", {
         ...params,
         sortBy: customSortBy || sortBy,
         filters: customFilters || filters

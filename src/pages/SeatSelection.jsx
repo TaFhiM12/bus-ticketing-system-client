@@ -21,7 +21,7 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.get(`http://localhost:5001/api/buses/${bus._id}/seats`);
+      const response = await axios.get(`https://bus-ticketing-system-server-2.onrender.com/api/buses/${bus._id}/seats`);
       
       if (response.data.success && response.data.seatLayout) {
         // Ensure seatLayout is in correct format
