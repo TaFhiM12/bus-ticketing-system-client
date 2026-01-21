@@ -4,16 +4,29 @@ import Loading from '../shared/components/Loading';
 import useAuth from '../hooks/useAuth';
 
 const PrivateRoute = ({children}) => {
-    const {user , loading} = useAuth()
+    const {user, loading} = useAuth();
     const location = useLocation();
 
     if(loading) {
-        return <Loading/>
+        return <Loading/>;
     }
 
     if(!user){
-        return <Navigate state={{from: location.pathname}} to='/login' replace/>
+        // Save current location and any search data
+        const redirectPath = location.pathname + location.search;
+        sessionStorage.setItem('redirectAfterLogin', redirectPath);
+        
+        // Save search data if on results page
+        if (location.pathname === '/results' && location.state) {
+            sessionStorage.setItem('busSearchData', JSON.stringify({
+                ...location.state,
+                timestamp: new Date().getTime()
+            }));
+        }
+        
+        return <Navigate to='/login' state={{ from: location }} replace/>;
     }
+    
     return children;
 };
 

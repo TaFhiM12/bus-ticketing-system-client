@@ -41,19 +41,16 @@ const HeroSearchForm = () => {
   const [sortBy, setSortBy] = useState("departureTime");
   const [availableFilters, setAvailableFilters] = useState(null);
   
-  // Fetch popular cities on mount and set default date
   useEffect(() => {
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
-    // Set default date to tomorrow
     setSearchData(prev => ({
       ...prev,
       date: tomorrow.toISOString().split('T')[0]
     }));
     
-    // Fetch available filters
     fetchFilters();
   }, []);
   
@@ -62,8 +59,7 @@ const HeroSearchForm = () => {
       const response = await axios.get("https://bus-ticketing-system-server-1.onrender.com/api/buses/filters");
       setAvailableFilters(response.data);
     } catch (error) {
-      console.log("Using default filters - server might be initializing");
-      // Set default filters from local data
+      console.log("Using default filters");
       setAvailableFilters({
         operators: ["Hanif Enterprise", "Shyamoli Paribahan", "ENA Paribahan", "Liton Enterprise", "Green Line Paribahan", "Saintmartin Travels", "Soudia Paribahan"],
         busTypes: ["AC Business", "AC Seater", "Non-AC Seater", "AC Sleeper", "Executive"],
@@ -95,8 +91,6 @@ const HeroSearchForm = () => {
         [type]: response.data.suggestions || [] 
       }));
     } catch (error) {
-      console.log("Suggestions error, using local fallback");
-      // Local fallback suggestions
       const localCities = ["Dhaka", "Chittagong", "Cox's Bazar", "Sylhet", "Khulna", "Rajshahi", "Barisal"];
       const localOperators = ["Hanif Enterprise", "Shyamoli Paribahan", "ENA Paribahan"];
       
@@ -134,7 +128,6 @@ const HeroSearchForm = () => {
   const handleSearch = async (e) => {
     e.preventDefault();
     
-    // Basic validation
     if (!searchData.from.trim() || !searchData.to.trim() || !searchData.date) {
       alert("Please fill in all required fields");
       return;
@@ -153,13 +146,19 @@ const HeroSearchForm = () => {
     try {
       setLoading(true);
       
+      // Store search data in sessionStorage for persistence
+      const searchSessionData = {
+        searchParams: searchData,
+        filters: showFilters ? filters : {},
+        sortBy: sortBy,
+        timestamp: new Date().getTime()
+      };
+      
+      sessionStorage.setItem('busSearchData', JSON.stringify(searchSessionData));
+      
       // Navigate to results page
       navigate("/results", {
-        state: {
-          searchParams: searchData,
-          filters: showFilters ? filters : {},
-          sortBy: sortBy
-        }
+        state: searchSessionData
       });
       
     } catch (error) {
@@ -207,16 +206,10 @@ const HeroSearchForm = () => {
     <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 lg:px-6">
       <div className="backdrop-blur-md bg-white/5 rounded-xl sm:rounded-2xl lg:rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl border border-white/10">
         <div className="space-y-6">
-          {/* Search Form Header */}
-         
-          
-          {/* Search Form */}
           <form onSubmit={handleSearch}>
             <div className="space-y-4">
-              {/* Main Search Fields */}
               <div className="relative">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* From Input */}
                   <div className="space-y-2">
                     <label className="text-white font-medium flex items-center gap-2">
                       <MapPin size={16} className="text-white/80" />
@@ -230,13 +223,11 @@ const HeroSearchForm = () => {
                         placeholder="Enter departure city"
                         className="w-full p-4 pl-12 rounded-xl bg-white border border-gray-200 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#295A55]/50 focus:border-[#295A55] transition-all duration-300"
                         required
-                        list="from-suggestions"
                       />
                       <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">
                         <MapPin size={20} />
                       </div>
                       
-                      {/* Suggestions Dropdown */}
                       {suggestions.from.length > 0 && (
                         <div className="absolute z-10 w-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 max-h-60 overflow-y-auto">
                           {suggestions.from.map((suggestion, index) => (
@@ -267,7 +258,6 @@ const HeroSearchForm = () => {
                     </div>
                   </div>
                   
-                  {/* To Input */}
                   <div className="space-y-2">
                     <label className="text-white font-medium flex items-center gap-2">
                       <MapPin size={16} className="text-white/80" />
@@ -281,13 +271,11 @@ const HeroSearchForm = () => {
                         placeholder="Enter destination city"
                         className="w-full p-4 pl-12 rounded-xl bg-white border border-gray-200 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#295A55]/50 focus:border-[#295A55] transition-all duration-300"
                         required
-                        list="to-suggestions"
                       />
                       <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">
                         <MapPin size={20} />
                       </div>
                       
-                      {/* Suggestions Dropdown */}
                       {suggestions.to.length > 0 && (
                         <div className="absolute z-10 w-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 max-h-60 overflow-y-auto">
                           {suggestions.to.map((suggestion, index) => (
@@ -318,7 +306,6 @@ const HeroSearchForm = () => {
                     </div>
                   </div>
                   
-                  {/* Journey Date */}
                   <div className="space-y-2">
                     <label className="text-white font-medium flex items-center gap-2">
                       <Calendar size={16} className="text-white/80" />
@@ -340,7 +327,6 @@ const HeroSearchForm = () => {
                     </div>
                   </div>
                   
-                  {/* Passengers */}
                   <div className="space-y-2">
                     <label className="text-white font-medium flex items-center gap-2">
                       <Users size={16} className="text-white/80" />
@@ -384,7 +370,6 @@ const HeroSearchForm = () => {
                   </div>
                 </div>
                 
-                {/* Swap Button */}
                 <button
                   type="button"
                   onClick={handleSwap}
@@ -395,7 +380,6 @@ const HeroSearchForm = () => {
                 </button>
               </div>
               
-              {/* Advanced Filters Toggle */}
               <div className="flex items-center justify-between pt-2">
                 <button
                   type="button"
@@ -423,11 +407,9 @@ const HeroSearchForm = () => {
                 </div>
               </div>
               
-              {/* Advanced Filters Panel */}
               {showFilters && availableFilters && (
                 <div className="bg-white/10 rounded-xl p-6 space-y-6 animate-fadeIn">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Operators Filter */}
                     <div className="space-y-3">
                       <h3 className="text-white font-medium">Bus Operators</h3>
                       <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
@@ -445,7 +427,6 @@ const HeroSearchForm = () => {
                       </div>
                     </div>
                     
-                    {/* Bus Types Filter */}
                     <div className="space-y-3">
                       <h3 className="text-white font-medium">Bus Type</h3>
                       <div className="space-y-2">
@@ -463,7 +444,6 @@ const HeroSearchForm = () => {
                       </div>
                     </div>
                     
-                    {/* Departure Time Filter */}
                     <div className="space-y-3">
                       <h3 className="text-white font-medium">Departure Time</h3>
                       <div className="grid grid-cols-2 gap-2">
@@ -493,7 +473,6 @@ const HeroSearchForm = () => {
                     </div>
                   </div>
                   
-                  {/* Price Range Filter */}
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
                       <h3 className="text-white font-medium">Price Range</h3>
@@ -520,7 +499,6 @@ const HeroSearchForm = () => {
                     </div>
                   </div>
                   
-                  {/* Clear Filters Button */}
                   <div className="flex justify-center">
                     <button
                       type="button"
@@ -541,7 +519,6 @@ const HeroSearchForm = () => {
                 </div>
               )}
               
-              {/* Search Button with Loading State */}
               <div className="pt-4">
                 <button
                   type="submit"
@@ -564,7 +541,6 @@ const HeroSearchForm = () => {
             </div>
           </form>
           
-          {/* Quick Suggestions */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {["Dhaka to Chittagong", "Dhaka to Sylhet", "Chittagong to Cox's Bazar", "Dhaka to Khulna"].map((route) => (
               <button
@@ -581,12 +557,10 @@ const HeroSearchForm = () => {
           
           <div className="border-b border-white/20 my-2 sm:my-4"></div>
           
-          {/* Popular Routes Component */}
           <PopularRoutes />
         </div>
       </div>
       
-      {/* Loading Overlay */}
       {loading && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-8 flex flex-col items-center gap-4">

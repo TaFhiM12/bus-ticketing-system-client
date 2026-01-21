@@ -1,4 +1,3 @@
-// BusSearchResults.jsx
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { 
@@ -19,51 +18,156 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar,
-  Navigation
+  Navigation,
+  AlertCircle
 } from "lucide-react";
 import axios from "axios";
+import SeatSelection from "./SeatSelection";
+import useAuth from "../hooks/useAuth";
+
+// Default filter values
+const DEFAULT_FILTERS = {
+  operators: [],
+  busTypes: [],
+  departureTime: "",
+  priceRange: { min: 0, max: 5000 },
+  amenities: []
+};
+
+const DEFAULT_SORT = "departureTime";
 
 const BusSearchResults = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [buses, setBuses] = useState([]);
   const [searchParams, setSearchParams] = useState({});
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [sortBy, setSortBy] = useState(DEFAULT_SORT);
+  const [availableFilters, setAvailableFilters] = useState({
     operators: [],
     busTypes: [],
-    departureTime: "",
-    priceRange: { min: 0, max: 5000 },
-    amenities: []
+    amenities: [],
+    priceRange: { min: 0, max: 5000 }
   });
-  const [sortBy, setSortBy] = useState("departureTime");
-  const [availableFilters, setAvailableFilters] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedBus, setSelectedBus] = useState(null);
-  const [showSeatLayout, setShowSeatLayout] = useState(false);
-  const [selectedSeats, setSelectedSeats] = useState([]);
-  const [passengerCount, setPassengerCount] = useState(1);
+  const [showSeatSelection, setShowSeatSelection] = useState(false);
+  const [bookingData, setBookingData] = useState(null);
   const itemsPerPage = 5;
 
   useEffect(() => {
-    const params = location.state?.searchParams || {};
-    setSearchParams(params);
-    fetchBuses(params);
-  }, [location]);
+    // Load search data from sessionStorage or location state
+    const loadSearchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Check sessionStorage first (for login redirects)
+        const sessionData = sessionStorage.getItem('busSearchData');
+        let searchData = null;
+        
+        if (sessionData) {
+          try {
+            searchData = JSON.parse(sessionData);
+            // Check if data is fresh (less than 10 minutes old)
+            const isFresh = new Date().getTime() - (searchData.timestamp || 0) < 10 * 60 * 1000;
+            if (isFresh) {
+              console.log("Using session search data");
+            } else {
+              searchData = null;
+              sessionStorage.removeItem('busSearchData');
+            }
+          } catch (e) {
+            console.error("Error parsing session data:", e);
+            sessionStorage.removeItem('busSearchData');
+          }
+        }
+        
+        // Fallback to location state
+        if (!searchData && location.state) {
+          searchData = location.state;
+        }
+        
+        // If still no data, redirect to home
+        if (!searchData || !searchData.searchParams) {
+          navigate("/");
+          return;
+        }
+        
+        // Set states with safe defaults
+        const {
+          searchParams: params = {},
+          filters: savedFilters = DEFAULT_FILTERS,
+          sortBy: savedSortBy = DEFAULT_SORT
+        } = searchData;
+        
+        setSearchParams(params);
+        setFilters({
+          ...DEFAULT_FILTERS,
+          ...savedFilters,
+          priceRange: savedFilters.priceRange || DEFAULT_FILTERS.priceRange
+        });
+        setSortBy(savedSortBy);
+        
+        // Fetch buses
+        await fetchBuses(params, savedFilters, savedSortBy);
+        
+      } catch (error) {
+        console.error("Error loading search data:", error);
+        navigate("/");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadSearchData();
+  }, [location, navigate]);
 
-  const fetchBuses = async (params) => {
+  const fetchBuses = async (params, customFilters = null, customSortBy = null) => {
     try {
       setLoading(true);
+      
+      // Ensure we have valid parameters
+      if (!params.from || !params.to || !params.date) {
+        console.error("Missing search parameters");
+        setBuses([]);
+        return;
+      }
+      
       const response = await axios.post("http://localhost:5001/api/buses/search", {
         ...params,
-        sortBy,
-        filters: Object.keys(filters).length > 0 ? filters : {}
+        sortBy: customSortBy || sortBy,
+        filters: customFilters || filters
       });
       
-      setBuses(response.data.buses);
-      setAvailableFilters(response.data.filters);
+      if (response.data.success === false) {
+        console.error("Search API error:", response.data.error);
+        setBuses([]);
+        return;
+      }
+      
+      setBuses(response.data.buses || []);
+      
+      // Set available filters from response
+      if (response.data.filters) {
+        setAvailableFilters(prev => ({
+          ...prev,
+          ...response.data.filters,
+          priceRange: response.data.filters.priceRange || prev.priceRange
+        }));
+      }
+      
     } catch (error) {
       console.error("Failed to fetch buses:", error);
+      setBuses([]);
+      
+      // Set fallback available filters
+      setAvailableFilters(prev => ({
+        ...prev,
+        operators: ["Hanif Enterprise", "Shyamoli Paribahan", "ENA Paribahan"],
+        busTypes: ["AC Business", "AC Seater", "Non-AC Seater"]
+      }));
     } finally {
       setLoading(false);
     }
@@ -73,72 +177,60 @@ const BusSearchResults = () => {
     const newFilters = { ...filters };
     
     if (filterType === "operators" || filterType === "busTypes" || filterType === "amenities") {
-      const current = newFilters[filterType];
+      const current = newFilters[filterType] || [];
       newFilters[filterType] = current.includes(value) 
         ? current.filter(v => v !== value)
         : [...current, value];
     } else if (filterType === "priceRange") {
-      newFilters.priceRange = value;
+      newFilters.priceRange = {
+        min: value.min || 0,
+        max: value.max || 5000
+      };
     } else {
       newFilters[filterType] = value;
     }
     
     setFilters(newFilters);
-    fetchBuses({ ...searchParams, filters: newFilters, sortBy });
+    fetchBuses(searchParams, newFilters, sortBy);
   };
 
   const clearFilters = () => {
-    setFilters({
-      operators: [],
-      busTypes: [],
-      departureTime: "",
-      priceRange: { min: 0, max: 5000 },
-      amenities: []
-    });
-    fetchBuses(searchParams);
+    setFilters(DEFAULT_FILTERS);
+    fetchBuses(searchParams, DEFAULT_FILTERS, sortBy);
   };
 
   const handleSortChange = (value) => {
     setSortBy(value);
-    fetchBuses({ ...searchParams, sortBy: value, filters });
+    fetchBuses(searchParams, filters, value);
   };
 
   const handleBookNow = (bus) => {
+    if (!user) {
+      // Store current search data and redirect to login
+      const redirectData = {
+        searchParams,
+        filters,
+        sortBy,
+        timestamp: new Date().getTime()
+      };
+      sessionStorage.setItem('busSearchData', JSON.stringify(redirectData));
+      navigate("/login", { state: { from: location.pathname } });
+      return;
+    }
+    
     setSelectedBus(bus);
-    setShowSeatLayout(true);
+    setShowSeatSelection(true);
   };
 
-  const handleSeatSelect = (seat) => {
-    if (selectedSeats.length >= passengerCount && !selectedSeats.find(s => s.seatNumber === seat.seatNumber)) {
-      alert(`You can only select ${passengerCount} seat(s)`);
-      return;
-    }
-
-    if (seat.status === "booked") {
-      alert("This seat is already booked!");
-      return;
-    }
-
-    setSelectedSeats(prev => {
-      if (prev.find(s => s.seatNumber === seat.seatNumber)) {
-        return prev.filter(s => s.seatNumber !== seat.seatNumber);
-      } else {
-        return [...prev, seat];
-      }
-    });
-  };
-
-  const proceedToBooking = () => {
-    if (selectedSeats.length !== passengerCount) {
-      alert(`Please select exactly ${passengerCount} seat(s)`);
-      return;
-    }
-
+  const handleProceedToBooking = (data) => {
+    setBookingData(data);
+    setShowSeatSelection(false);
     navigate("/booking", {
       state: {
-        bus: selectedBus,
-        selectedSeats,
-        passengerCount,
+        bus: data.bus,
+        selectedSeats: data.selectedSeats,
+        passengerCount: data.passengerCount,
+        totalPrice: data.totalPrice,
         searchParams
       }
     });
@@ -164,30 +256,42 @@ const BusSearchResults = () => {
   };
 
   const formatTime = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: true 
-    });
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+      });
+    } catch {
+      return "Invalid time";
+    }
   };
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric'
-    });
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch {
+      return "Invalid date";
+    }
   };
 
   const getDuration = (departure, arrival) => {
-    const dep = new Date(departure);
-    const arr = new Date(arrival);
-    const diff = arr - dep;
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    return `${hours}h ${minutes}m`;
+    try {
+      const dep = new Date(departure);
+      const arr = new Date(arrival);
+      const diff = arr - dep;
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      return `${hours}h ${minutes}m`;
+    } catch {
+      return "N/A";
+    }
   };
 
   const paginatedBuses = buses.slice(
@@ -195,9 +299,17 @@ const BusSearchResults = () => {
     currentPage * itemsPerPage
   );
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#295A55]"></div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-linear-to-b from-gray-50 to-gray-100 py-8 px-4">
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-8 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#295A55]"></div>
@@ -208,8 +320,12 @@ const BusSearchResults = () => {
     );
   }
 
+  // Safe price range access
+  const priceRangeMax = filters.priceRange?.max || 5000;
+  const availablePriceRangeMax = availableFilters.priceRange?.max || 5000;
+
   return (
-    <div className="min-h-screen bg-linear-to-b from-gray-50 to-gray-100 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-8 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -225,16 +341,16 @@ const BusSearchResults = () => {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
                 <h1 className="text-2xl font-bold text-gray-800">
-                  {searchParams.from} → {searchParams.to}
+                  {searchParams.from || "N/A"} → {searchParams.to || "N/A"}
                 </h1>
                 <div className="flex items-center gap-4 mt-2 text-gray-600">
                   <div className="flex items-center gap-1">
                     <Calendar size={16} />
-                    <span>{formatDate(searchParams.date)}</span>
+                    <span>{searchParams.date ? formatDate(searchParams.date) : "N/A"}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Users size={16} />
-                    <span>{searchParams.passengers} Passenger{searchParams.passengers > 1 ? 's' : ''}</span>
+                    <span>{searchParams.passengers || 1} Passenger{searchParams.passengers > 1 ? 's' : ''}</span>
                   </div>
                 </div>
               </div>
@@ -263,75 +379,77 @@ const BusSearchResults = () => {
                 </button>
               </div>
 
-              {/* Price Range */}
+              {/* Price Range Filter - FIXED */}
               <div className="mb-6">
                 <h3 className="font-medium text-gray-700 mb-3">Price Range</h3>
                 <input
                   type="range"
                   min="0"
-                  max="5000"
+                  max={availablePriceRangeMax}
                   step="100"
-                  value={filters.priceRange.max}
+                  value={priceRangeMax}
                   onChange={(e) => handleFilterChange("priceRange", { 
                     min: 0, 
                     max: parseInt(e.target.value) 
                   })}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#295A55]"
                 />
                 <div className="flex justify-between mt-2">
                   <span className="text-sm text-gray-600">৳0</span>
                   <span className="text-sm font-medium text-[#295A55]">
-                    Up to ৳{filters.priceRange.max}
+                    Up to ৳{priceRangeMax}
                   </span>
-                  <span className="text-sm text-gray-600">৳5000</span>
+                  <span className="text-sm text-gray-600">৳{availablePriceRangeMax}</span>
                 </div>
               </div>
 
-              {/* Bus Operators */}
-              {availableFilters?.operators && (
-                <div className="mb-6">
-                  <h3 className="font-medium text-gray-700 mb-3">Bus Operators</h3>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {availableFilters.operators.map((operator) => (
-                      <label key={operator} className="flex items-center gap-3 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={filters.operators.includes(operator)}
-                          onChange={() => handleFilterChange("operators", operator)}
-                          className="w-4 h-4 text-[#295A55] border-gray-300 rounded focus:ring-[#295A55]"
-                        />
-                        <span className="text-gray-600 group-hover:text-gray-800">
-                          {operator}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
+              {/* Bus Operators Filter */}
+              <div className="mb-6">
+                <h3 className="font-medium text-gray-700 mb-3">Bus Operators</h3>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {availableFilters.operators.map((operator) => (
+                    <label key={operator} className="flex items-center gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={(filters.operators || []).includes(operator)}
+                        onChange={() => handleFilterChange("operators", operator)}
+                        className="w-4 h-4 text-[#295A55] border-gray-300 rounded focus:ring-[#295A55]"
+                      />
+                      <span className="text-gray-600 group-hover:text-gray-800 text-sm">
+                        {operator}
+                      </span>
+                    </label>
+                  ))}
+                  {availableFilters.operators.length === 0 && (
+                    <p className="text-gray-500 text-sm">No operators available</p>
+                  )}
                 </div>
-              )}
+              </div>
 
-              {/* Bus Types */}
-              {availableFilters?.busTypes && (
-                <div className="mb-6">
-                  <h3 className="font-medium text-gray-700 mb-3">Bus Type</h3>
-                  <div className="space-y-2">
-                    {availableFilters.busTypes.map((type) => (
-                      <label key={type} className="flex items-center gap-3 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={filters.busTypes.includes(type)}
-                          onChange={() => handleFilterChange("busTypes", type)}
-                          className="w-4 h-4 text-[#295A55] border-gray-300 rounded focus:ring-[#295A55]"
-                        />
-                        <span className="text-gray-600 group-hover:text-gray-800">
-                          {type}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
+              {/* Bus Types Filter */}
+              <div className="mb-6">
+                <h3 className="font-medium text-gray-700 mb-3">Bus Type</h3>
+                <div className="space-y-2">
+                  {availableFilters.busTypes.map((type) => (
+                    <label key={type} className="flex items-center gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={(filters.busTypes || []).includes(type)}
+                        onChange={() => handleFilterChange("busTypes", type)}
+                        className="w-4 h-4 text-[#295A55] border-gray-300 rounded focus:ring-[#295A55]"
+                      />
+                      <span className="text-gray-600 group-hover:text-gray-800 text-sm">
+                        {type}
+                      </span>
+                    </label>
+                  ))}
+                  {availableFilters.busTypes.length === 0 && (
+                    <p className="text-gray-500 text-sm">No bus types available</p>
+                  )}
                 </div>
-              )}
+              </div>
 
-              {/* Departure Time */}
+              {/* Departure Time Filter */}
               <div className="mb-6">
                 <h3 className="font-medium text-gray-700 mb-3">Departure Time</h3>
                 <div className="grid grid-cols-2 gap-2">
@@ -352,41 +470,33 @@ const BusSearchResults = () => {
                           : "border-gray-200 hover:border-[#295A55] hover:bg-[#295A55]/5"
                       }`}
                     >
-                      <div className="font-medium">{time.label}</div>
+                      <div className="font-medium text-sm">{time.label}</div>
                       <div className="text-xs opacity-80">{time.time}</div>
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Amenities */}
+              {/* Amenities Filter */}
               <div className="mb-6">
                 <h3 className="font-medium text-gray-700 mb-3">Amenities</h3>
                 <div className="space-y-2">
-                  {[
-                    { value: "ac", label: "AC", icon: <Droplets size={16} /> },
-                    { value: "charging", label: "Charging", icon: <Zap size={16} /> },
-                    { value: "wifi", label: "WiFi", icon: <Wifi size={16} /> },
-                    { value: "water", label: "Water", icon: <Droplets size={16} /> },
-                    { value: "snacks", label: "Snacks", icon: <Coffee size={16} /> },
-                    { value: "blanket", label: "Blanket" },
-                    { value: "entertainment", label: "Entertainment", icon: <Tv size={16} /> }
-                  ].map((amenity) => (
-                    <label key={amenity.value} className="flex items-center gap-3 cursor-pointer group">
+                  {availableFilters.amenities.map((amenity) => (
+                    <label key={amenity} className="flex items-center gap-3 cursor-pointer group">
                       <input
                         type="checkbox"
-                        checked={filters.amenities.includes(amenity.value)}
-                        onChange={() => handleFilterChange("amenities", amenity.value)}
+                        checked={(filters.amenities || []).includes(amenity)}
+                        onChange={() => handleFilterChange("amenities", amenity)}
                         className="w-4 h-4 text-[#295A55] border-gray-300 rounded focus:ring-[#295A55]"
                       />
-                      <div className="flex items-center gap-2">
-                        {amenity.icon}
-                        <span className="text-gray-600 group-hover:text-gray-800">
-                          {amenity.label}
-                        </span>
-                      </div>
+                      <span className="text-gray-600 group-hover:text-gray-800 text-sm capitalize">
+                        {amenity}
+                      </span>
                     </label>
                   ))}
+                  {availableFilters.amenities.length === 0 && (
+                    <p className="text-gray-500 text-sm">No amenities available</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -452,7 +562,7 @@ const BusSearchResults = () => {
                       <div className="flex flex-col lg:flex-row gap-6">
                         {/* Left Column - Timing & Route */}
                         <div className="lg:w-1/3">
-                          <div className="bg-linear-to-r from-[#295A55] to-[#3A7A72] text-white rounded-lg p-4">
+                          <div className="bg-gradient-to-r from-[#295A55] to-[#3A7A72] text-white rounded-lg p-4">
                             <div className="flex justify-between items-center mb-4">
                               <div className="text-center">
                                 <div className="text-2xl font-bold">
@@ -484,12 +594,12 @@ const BusSearchResults = () => {
                             
                             <div className="flex justify-between text-sm">
                               <div className="text-center">
-                                <div className="font-medium">{bus.route.from.city}</div>
-                                <div className="opacity-80">{bus.route.from.terminal}</div>
+                                <div className="font-medium">{bus.route?.from?.city || "N/A"}</div>
+                                <div className="opacity-80">{bus.route?.from?.terminal || "N/A"}</div>
                               </div>
                               <div className="text-center">
-                                <div className="font-medium">{bus.route.to.city}</div>
-                                <div className="opacity-80">{bus.route.to.terminal}</div>
+                                <div className="font-medium">{bus.route?.to?.city || "N/A"}</div>
+                                <div className="opacity-80">{bus.route?.to?.terminal || "N/A"}</div>
                               </div>
                             </div>
                           </div>
@@ -497,11 +607,11 @@ const BusSearchResults = () => {
                           <div className="mt-4 space-y-2">
                             <div className="flex items-center gap-2 text-gray-600">
                               <Clock size={16} />
-                              <span>Duration: {bus.route.duration}</span>
+                              <span>Duration: {bus.route?.duration || "N/A"}</span>
                             </div>
                             <div className="flex items-center gap-2 text-gray-600">
                               <MapPin size={16} />
-                              <span>Distance: {bus.route.distance}</span>
+                              <span>Distance: {bus.route?.distance || "N/A"}</span>
                             </div>
                           </div>
                         </div>
@@ -511,15 +621,15 @@ const BusSearchResults = () => {
                           <div className="flex justify-between items-start mb-4">
                             <div>
                               <h3 className="text-xl font-bold text-gray-800">
-                                {bus.operator}
+                                {bus.operator || "Unknown Operator"}
                               </h3>
                               <div className="flex items-center gap-4 mt-1">
-                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getBusTypeColor(bus.type)}`}>
-                                  {bus.type}
+                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getBusTypeColor(bus.type || "")}`}>
+                                  {bus.type || "Unknown Type"}
                                 </span>
                                 <div className="flex items-center gap-1">
                                   <Star size={16} className="text-yellow-500 fill-yellow-500" />
-                                  <span className="font-medium">{bus.rating}</span>
+                                  <span className="font-medium">{bus.rating || "N/A"}</span>
                                   <span className="text-gray-500">/5</span>
                                 </div>
                               </div>
@@ -527,7 +637,7 @@ const BusSearchResults = () => {
                             <div className="text-right">
                               <div className="text-sm text-gray-500">Bus Number</div>
                               <div className="font-mono font-bold text-lg text-[#295A55]">
-                                {bus.busNumber}
+                                {bus.busNumber || "N/A"}
                               </div>
                             </div>
                           </div>
@@ -538,7 +648,7 @@ const BusSearchResults = () => {
                               <span className="font-medium text-gray-700">Features:</span>
                             </div>
                             <div className="flex flex-wrap gap-2">
-                              {bus.features.slice(0, 3).map((feature, index) => (
+                              {(bus.features || []).slice(0, 3).map((feature, index) => (
                                 <span
                                   key={index}
                                   className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
@@ -546,6 +656,9 @@ const BusSearchResults = () => {
                                   {feature}
                                 </span>
                               ))}
+                              {(!bus.features || bus.features.length === 0) && (
+                                <span className="text-gray-500 text-sm">No features listed</span>
+                              )}
                             </div>
                           </div>
                           
@@ -555,7 +668,7 @@ const BusSearchResults = () => {
                               <span className="font-medium text-gray-700">Amenities:</span>
                             </div>
                             <div className="flex flex-wrap gap-3">
-                              {bus.amenities.slice(0, 5).map((amenity, index) => (
+                              {(bus.amenities || []).slice(0, 5).map((amenity, index) => (
                                 <div
                                   key={index}
                                   className="flex items-center gap-1 text-gray-600"
@@ -564,7 +677,10 @@ const BusSearchResults = () => {
                                   <span className="text-sm capitalize">{amenity}</span>
                                 </div>
                               ))}
-                              {bus.amenities.length > 5 && (
+                              {(!bus.amenities || bus.amenities.length === 0) && (
+                                <span className="text-gray-500 text-sm">No amenities listed</span>
+                              )}
+                              {bus.amenities && bus.amenities.length > 5 && (
                                 <span className="text-sm text-gray-500">
                                   +{bus.amenities.length - 5} more
                                 </span>
@@ -577,7 +693,7 @@ const BusSearchResults = () => {
                         <div className="lg:w-1/4 border-l lg:border-l-0 lg:border-t lg:pt-4 lg:mt-4 lg:pl-6 lg:border-gray-100">
                           <div className="text-right mb-4">
                             <div className="flex items-center justify-end gap-2 mb-1">
-                              {bus.discountPrice < bus.price ? (
+                              {bus.discountPrice && bus.discountPrice < bus.price ? (
                                 <>
                                   <span className="text-2xl font-bold text-[#295A55]">
                                     ৳{bus.discountPrice}
@@ -588,8 +704,8 @@ const BusSearchResults = () => {
                                 </>
                               ) : (
                                 <span className="text-2xl font-bold text-[#295A55]">
-                                  ৳{bus.price}
-                                </span>
+                                    ৳{bus.price || "N/A"}
+                                  </span>
                               )}
                             </div>
                             
@@ -608,21 +724,23 @@ const BusSearchResults = () => {
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-gray-600">Available Seats:</span>
                               <span className={`font-medium ${
-                                bus.availableSeats < 10 ? 'text-red-600' : 
-                                bus.availableSeats < 20 ? 'text-orange-600' : 
+                                (bus.availableSeats || 0) < 10 ? 'text-red-600' : 
+                                (bus.availableSeats || 0) < 20 ? 'text-orange-600' : 
                                 'text-green-600'
                               }`}>
-                                {bus.availableSeats} / {bus.totalSeats}
+                                {bus.availableSeats || 0} / {bus.totalSeats || 0}
                               </span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2">
                               <div 
                                 className={`h-2 rounded-full ${
-                                  (bus.availableSeats / bus.totalSeats) > 0.5 ? 'bg-green-500' :
-                                  (bus.availableSeats / bus.totalSeats) > 0.2 ? 'bg-orange-500' :
+                                  ((bus.availableSeats || 0) / (bus.totalSeats || 1)) > 0.5 ? 'bg-green-500' :
+                                  ((bus.availableSeats || 0) / (bus.totalSeats || 1)) > 0.2 ? 'bg-orange-500' :
                                   'bg-red-500'
                                 }`}
-                                style={{ width: `${(bus.availableSeats / bus.totalSeats) * 100}%` }}
+                                style={{ 
+                                  width: `${((bus.availableSeats || 0) / (bus.totalSeats || 1)) * 100}%` 
+                                }}
                               ></div>
                             </div>
                           </div>
@@ -630,7 +748,7 @@ const BusSearchResults = () => {
                           <div className="space-y-3">
                             <button
                               onClick={() => handleBookNow(bus)}
-                              className="w-full bg-linear-to-r from-[#295A55] to-[#3A7A72] text-white py-3 rounded-lg font-semibold hover:from-[#244D49] hover:to-[#346B64] transition-all shadow-md hover:shadow-lg"
+                              className="w-full bg-gradient-to-r from-[#295A55] to-[#3A7A72] text-white py-3 rounded-lg font-semibold hover:from-[#244D49] hover:to-[#346B64] transition-all shadow-md hover:shadow-lg"
                             >
                               Book Now
                             </button>
@@ -655,7 +773,7 @@ const BusSearchResults = () => {
                             <span>Boarding Points:</span>
                           </div>
                           <div className="flex flex-wrap gap-2">
-                            {bus.boardingPoints.map((point, index) => (
+                            {(bus.boardingPoints || []).map((point, index) => (
                               <span
                                 key={index}
                                 className="px-3 py-1 bg-white border border-gray-200 rounded-full text-sm text-gray-600"
@@ -663,6 +781,9 @@ const BusSearchResults = () => {
                                 {point}
                               </span>
                             ))}
+                            {(!bus.boardingPoints || bus.boardingPoints.length === 0) && (
+                              <span className="text-gray-500 text-sm">No boarding points listed</span>
+                            )}
                           </div>
                         </div>
                         <div>
@@ -671,7 +792,7 @@ const BusSearchResults = () => {
                             <span>Dropping Points:</span>
                           </div>
                           <div className="flex flex-wrap gap-2">
-                            {bus.droppingPoints.map((point, index) => (
+                            {(bus.droppingPoints || []).map((point, index) => (
                               <span
                                 key={index}
                                 className="px-3 py-1 bg-white border border-gray-200 rounded-full text-sm text-gray-600"
@@ -679,6 +800,9 @@ const BusSearchResults = () => {
                                 {point}
                               </span>
                             ))}
+                            {(!bus.droppingPoints || bus.droppingPoints.length === 0) && (
+                              <span className="text-gray-500 text-sm">No dropping points listed</span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -738,365 +862,186 @@ const BusSearchResults = () => {
         </div>
       </div>
 
-      {/* Seat Layout Modal */}
-      {showSeatLayout && selectedBus && (
+      {/* Seat Selection Overlay */}
+      {showSeatSelection && selectedBus && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">Select Seats</h2>
-                <button
-                  onClick={() => {
-                    setShowSeatLayout(false);
-                    setSelectedSeats([]);
-                  }}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  ✕
-                </button>
-              </div>
-              
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                  <div>
-                    <h3 className="font-semibold text-gray-700">{selectedBus.operator}</h3>
-                    <div className="text-sm text-gray-600">
-                      {selectedBus.type} • {selectedBus.busNumber}
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-4">
-                    <div>
-                      <div className="text-sm text-gray-600">Passengers</div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setPassengerCount(c => Math.max(1, c - 1))}
-                          className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center"
-                        >
-                          -
-                        </button>
-                        <span className="font-bold text-lg">{passengerCount}</span>
-                        <button
-                          onClick={() => setPassengerCount(c => Math.min(selectedBus.availableSeats, c + 1))}
-                          className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div className="text-right">
-                      <div className="text-sm text-gray-600">Selected</div>
-                      <div className="font-bold text-lg text-[#295A55]">
-                        {selectedSeats.length} / {passengerCount}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Seat Layout */}
-              <div className="mb-8">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold text-gray-700">Seat Layout</h3>
-                  <div className="flex items-center gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 bg-green-100 border border-green-500 rounded"></div>
-                      <span>Available</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 bg-blue-100 border border-blue-500 rounded"></div>
-                      <span>Selected</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 bg-gray-100 border border-gray-400 rounded"></div>
-                      <span>Booked</span>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Bus Layout */}
-                <div className="bg-gray-100 rounded-lg p-6">
-                  {/* Driver's Seat */}
-                  <div className="flex justify-center mb-8">
-                    <div className="text-center">
-                      <div className="w-12 h-12 bg-gray-300 rounded mb-2 mx-auto"></div>
-                      <div className="text-sm text-gray-600">Driver</div>
-                    </div>
-                  </div>
-                  
-                  {/* Seats Grid */}
-                  <div className="space-y-4">
-                    {Array.from({ length: Math.ceil(selectedBus.totalSeats / 4) }, (_, rowIndex) => (
-                      <div key={rowIndex} className="flex gap-8 justify-center">
-                        {[0, 1, 2, 3].map((colIndex) => {
-                          const seatNumber = rowIndex * 4 + colIndex + 1;
-                          if (seatNumber > selectedBus.totalSeats) return null;
-                          
-                          const isBooked = seatNumber > (selectedBus.totalSeats - selectedBus.availableSeats);
-                          const isSelected = selectedSeats.find(s => s.seatNumber === seatNumber);
-                          const seatType = colIndex === 0 || colIndex === 3 ? 'window' : 'aisle';
-                          
-                          return (
-                            <button
-                              key={seatNumber}
-                              onClick={() => handleSeatSelect({
-                                seatNumber,
-                                type: seatType,
-                                status: isBooked ? 'booked' : 'available',
-                                priceMultiplier: seatType === 'window' ? 1.0 : 0.95
-                              })}
-                              disabled={isBooked}
-                              className={`w-12 h-12 rounded flex flex-col items-center justify-center border transition-all ${
-                                isBooked
-                                  ? 'bg-gray-100 border-gray-400 cursor-not-allowed'
-                                  : isSelected
-                                  ? 'bg-blue-100 border-blue-500'
-                                  : 'bg-green-100 border-green-500 hover:bg-green-200'
-                              }`}
-                            >
-                              <span className="font-bold">{seatNumber}</span>
-                              <span className="text-xs">{seatType.charAt(0).toUpperCase()}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {/* Aisle */}
-                  <div className="h-8"></div>
-                </div>
-              </div>
-              
-              {/* Selected Seats Summary */}
-              {selectedSeats.length > 0 && (
-                <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-                  <h3 className="font-semibold text-gray-700 mb-3">Selected Seats</h3>
-                  <div className="flex flex-wrap gap-3">
-                    {selectedSeats.map((seat, index) => (
-                      <div key={index} className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg border border-blue-200">
-                        <span className="font-bold">Seat {seat.seatNumber}</span>
-                        <span className="text-sm text-gray-600">({seat.type})</span>
-                        <span className="text-sm font-medium text-[#295A55]">
-                          ৳{Math.round(selectedBus.price * seat.priceMultiplier)}
-                        </span>
-                        <button
-                          onClick={() => setSelectedSeats(s => s.filter((_, i) => i !== index))}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* Total Price */}
-              <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg mb-6">
-                <div>
-                  <div className="text-lg font-bold text-gray-800">Total Fare</div>
-                  <div className="text-sm text-gray-600">Inclusive of all charges</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-3xl font-bold text-[#295A55]">
-                    ৳{selectedSeats.reduce((total, seat) => 
-                      total + Math.round(selectedBus.price * seat.priceMultiplier), 0
-                    )}
-                  </div>
-                  {selectedBus.discountPrice < selectedBus.price && (
-                    <div className="text-sm text-green-600">
-                      You save ৳{Math.round(selectedBus.price - selectedBus.discountPrice) * selectedSeats.length}
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-4">
-                <button
-                  onClick={() => {
-                    setShowSeatLayout(false);
-                    setSelectedSeats([]);
-                  }}
-                  className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={proceedToBooking}
-                  disabled={selectedSeats.length !== passengerCount}
-                  className="px-6 py-3 bg-[#295A55] text-white rounded-lg hover:bg-[#244D49] disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Proceed to Booking
-                </button>
-              </div>
-            </div>
-          </div>
+          <SeatSelection
+            bus={selectedBus}
+            onClose={() => {
+              setShowSeatSelection(false);
+              setSelectedBus(null);
+            }}
+            onProceedToBooking={handleProceedToBooking}
+          />
         </div>
       )}
 
       {/* Bus Details Modal */}
-      {selectedBus && !showSeatLayout && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-800">{selectedBus.operator}</h2>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getBusTypeColor(selectedBus.type)}`}>
-                      {selectedBus.type}
-                    </span>
-                    <span className="font-mono text-gray-600">{selectedBus.busNumber}</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setSelectedBus(null)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  ✕
-                </button>
-              </div>
-              
-              <div className="space-y-6">
-                {/* Route & Timing */}
-                <div className="bg-linear-to-r from-[#295A55] to-[#3A7A72] text-white rounded-lg p-4">
-                  <div className="flex justify-between items-center">
-                    <div className="text-center">
-                      <div className="text-lg font-bold">{formatTime(selectedBus.departureTime)}</div>
-                      <div className="text-sm opacity-90">{selectedBus.route.from.city}</div>
-                    </div>
-                    
-                    <div className="text-center">
-                      <div className="flex items-center justify-center">
-                        <ArrowRight size={20} />
-                      </div>
-                      <div className="text-sm">{selectedBus.route.duration}</div>
-                    </div>
-                    
-                    <div className="text-center">
-                      <div className="text-lg font-bold">{formatTime(selectedBus.arrivalTime)}</div>
-                      <div className="text-sm opacity-90">{selectedBus.route.to.city}</div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Details Grid */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <div className="font-medium text-gray-700">Distance</div>
-                    <div className="text-gray-600">{selectedBus.route.distance}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="font-medium text-gray-700">Rating</div>
-                    <div className="flex items-center gap-1">
-                      <Star size={16} className="text-yellow-500 fill-yellow-500" />
-                      <span>{selectedBus.rating}/5</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="font-medium text-gray-700">Total Seats</div>
-                    <div className="text-gray-600">{selectedBus.totalSeats}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="font-medium text-gray-700">Available Seats</div>
-                    <div className="text-gray-600">{selectedBus.availableSeats}</div>
-                  </div>
-                </div>
-                
-                {/* Amenities */}
-                <div>
-                  <h3 className="font-semibold text-gray-700 mb-3">Amenities</h3>
-                  <div className="flex flex-wrap gap-3">
-                    {selectedBus.amenities.map((amenity, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg"
-                      >
-                        {getAmenityIcon(amenity)}
-                        <span className="text-sm capitalize">{amenity}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Features */}
-                <div>
-                  <h3 className="font-semibold text-gray-700 mb-3">Features</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedBus.features.map((feature, index) => (
-                      <span
-                        key={index}
-                        className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm"
-                      >
-                        {feature}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Boarding Points */}
-                <div>
-                  <h3 className="font-semibold text-gray-700 mb-3">Boarding Points</h3>
-                  <div className="space-y-2">
-                    {selectedBus.boardingPoints.map((point, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <MapPin size={16} className="text-gray-400" />
-                        <span className="text-gray-600">{point}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Dropping Points */}
-                <div>
-                  <h3 className="font-semibold text-gray-700 mb-3">Dropping Points</h3>
-                  <div className="space-y-2">
-                    {selectedBus.droppingPoints.map((point, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <MapPin size={16} className="text-gray-400" />
-                        <span className="text-gray-600">{point}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Cancellation Policy */}
-                <div>
-                  <h3 className="font-semibold text-gray-700 mb-2">Cancellation Policy</h3>
-                  <p className="text-gray-600 text-sm">{selectedBus.cancellationPolicy}</p>
-                </div>
-              </div>
-              
-              <div className="mt-8 pt-6 border-t">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <div className="text-lg font-bold text-[#295A55]">
-                      ৳{selectedBus.discountPrice < selectedBus.price ? selectedBus.discountPrice : selectedBus.price}
-                    </div>
-                    {selectedBus.discountPrice < selectedBus.price && (
-                      <div className="text-sm text-green-600">{selectedBus.discountText}</div>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => {
-                      setSelectedBus(null);
-                      handleBookNow(selectedBus);
-                    }}
-                    className="px-6 py-3 bg-[#295A55] text-white rounded-lg hover:bg-[#244D49]"
-                  >
-                    Book Now
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      {selectedBus && !showSeatSelection && (
+        <BusDetailsModal
+          bus={selectedBus}
+          onClose={() => setSelectedBus(null)}
+          onBookNow={() => {
+            setSelectedBus(null);
+            handleBookNow(selectedBus);
+          }}
+          formatTime={formatTime}
+          formatDate={formatDate}
+          getAmenityIcon={getAmenityIcon}
+          getBusTypeColor={getBusTypeColor}
+        />
       )}
     </div>
   );
 };
+
+// Separate Bus Details Modal Component
+const BusDetailsModal = ({ bus, onClose, onBookNow, formatTime, formatDate, getAmenityIcon, getBusTypeColor }) => (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="p-6">
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800">{bus.operator}</h2>
+            <div className="flex items-center gap-2 mt-1">
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getBusTypeColor(bus.type)}`}>
+                {bus.type}
+              </span>
+              <span className="font-mono text-gray-600">{bus.busNumber}</span>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            ✕
+          </button>
+        </div>
+        
+        <div className="space-y-6">
+          <div className="bg-gradient-to-r from-[#295A55] to-[#3A7A72] text-white rounded-lg p-4">
+            <div className="flex justify-between items-center">
+              <div className="text-center">
+                <div className="text-lg font-bold">{formatTime(bus.departureTime)}</div>
+                <div className="text-sm opacity-90">{bus.route?.from?.city}</div>
+              </div>
+              
+              <div className="text-center">
+                <div className="flex items-center justify-center">
+                  <ArrowRight size={20} />
+                </div>
+                <div className="text-sm">{bus.route?.duration}</div>
+              </div>
+              
+              <div className="text-center">
+                <div className="text-lg font-bold">{formatTime(bus.arrivalTime)}</div>
+                <div className="text-sm opacity-90">{bus.route?.to?.city}</div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <div className="font-medium text-gray-700">Distance</div>
+              <div className="text-gray-600">{bus.route?.distance}</div>
+            </div>
+            <div className="space-y-2">
+              <div className="font-medium text-gray-700">Rating</div>
+              <div className="flex items-center gap-1">
+                <Star size={16} className="text-yellow-500 fill-yellow-500" />
+                <span>{bus.rating}/5</span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="font-medium text-gray-700">Total Seats</div>
+              <div className="text-gray-600">{bus.totalSeats}</div>
+            </div>
+            <div className="space-y-2">
+              <div className="font-medium text-gray-700">Available Seats</div>
+              <div className="text-gray-600">{bus.availableSeats}</div>
+            </div>
+          </div>
+          
+          <div>
+            <h3 className="font-semibold text-gray-700 mb-3">Amenities</h3>
+            <div className="flex flex-wrap gap-3">
+              {bus.amenities.map((amenity, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg"
+                >
+                  {getAmenityIcon(amenity)}
+                  <span className="text-sm capitalize">{amenity}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div>
+            <h3 className="font-semibold text-gray-700 mb-3">Features</h3>
+            <div className="flex flex-wrap gap-2">
+              {bus.features.map((feature, index) => (
+                <span
+                  key={index}
+                  className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm"
+                >
+                  {feature}
+                </span>
+              ))}
+            </div>
+          </div>
+          
+          <div>
+            <h3 className="font-semibold text-gray-700 mb-3">Boarding Points</h3>
+            <div className="space-y-2">
+              {bus.boardingPoints.map((point, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <MapPin size={16} className="text-gray-400" />
+                  <span className="text-gray-600">{point}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div>
+            <h3 className="font-semibold text-gray-700 mb-3">Dropping Points</h3>
+            <div className="space-y-2">
+              {bus.droppingPoints.map((point, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <MapPin size={16} className="text-gray-400" />
+                  <span className="text-gray-600">{point}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div>
+            <h3 className="font-semibold text-gray-700 mb-2">Cancellation Policy</h3>
+            <p className="text-gray-600 text-sm">{bus.cancellationPolicy}</p>
+          </div>
+        </div>
+        
+        <div className="mt-8 pt-6 border-t">
+          <div className="flex justify-between items-center">
+            <div>
+              <div className="text-lg font-bold text-[#295A55]">
+                ৳{bus.discountPrice < bus.price ? bus.discountPrice : bus.price}
+              </div>
+              {bus.discountPrice < bus.price && (
+                <div className="text-sm text-green-600">{bus.discountText}</div>
+              )}
+            </div>
+            <button
+              onClick={onBookNow}
+              className="px-6 py-3 bg-[#295A55] text-white rounded-lg hover:bg-[#244D49]"
+            >
+              Book Now
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 export default BusSearchResults;

@@ -1,37 +1,65 @@
 // Login.jsx
-import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Bus, Facebook, Github } from 'lucide-react';
-import { FcGoogle } from 'react-icons/fc';
-import { NavLink, useLocation, useNavigate} from 'react-router';
-import useAuth from '../../hooks/useAuth';
+import React, { useState } from "react";
+import {
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  Bus,
+  Facebook,
+  Github,
+} from "lucide-react";
+import { FcGoogle } from "react-icons/fc";
+import { NavLink, useLocation, useNavigate } from "react-router";
+import useAuth from "../../hooks/useAuth";
 
 const Login = () => {
-  const {signInUser, signInWithGoogle} = useAuth();
+  const { signInUser, signInWithGoogle } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({});
   const location = useLocation();
-  const from = location.state?.from || '/';
+  const from = location.state?.from || "/";
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
+  // In the handleSubmit function, update:
   const handleSubmit = (e) => {
     e.preventDefault();
     signInUser(formData.email, formData.password)
-      .then(result => {
+      .then((result) => {
         const user = result.user;
-        console.log('Logged in user:', user);
-        // Redirect to the page user intended to visit before login
-        navigate(from, { replace: true });
+        console.log("Logged in user:", user);
+
+        // Check for saved search data
+        const savedSearchData = sessionStorage.getItem("busSearchData");
+        const redirectPath =
+          sessionStorage.getItem("redirectAfterLogin") || "/";
+
+        if (savedSearchData && redirectPath === "/results") {
+          const parsedData = JSON.parse(savedSearchData);
+          // Navigate to results with saved search data
+          navigate("/results", {
+            state: parsedData,
+            replace: true,
+          });
+        } else {
+          navigate(from, { replace: true });
+        }
+
+        // Clear session storage
+        sessionStorage.removeItem("busSearchData");
+        sessionStorage.removeItem("redirectAfterLogin");
       })
-      .catch(error => {
-        console.error('Login error:', error);
+      .catch((error) => {
+        console.error("Login error:", error);
       });
   };
 
@@ -58,9 +86,11 @@ const Login = () => {
               </div>
               <h1 className="text-4xl sm:text-5xl font-bold">Bus Vara</h1>
             </div>
-            <p className="text-xl sm:text-2xl font-medium opacity-90">Your Journey, Our Priority</p>
+            <p className="text-xl sm:text-2xl font-medium opacity-90">
+              Your Journey, Our Priority
+            </p>
           </div>
-          
+
           <div className="mt-auto">
             <div className="space-y-4">
               <div className="flex items-center gap-3">
@@ -88,9 +118,11 @@ const Login = () => {
                 <p className="text-lg">24/7 Customer Support</p>
               </div>
             </div>
-            
+
             <div className="mt-12 pt-8 border-t border-white/20">
-              <p className="text-sm opacity-80">&copy; 2024 Bus Vara. All rights reserved.</p>
+              <p className="text-sm opacity-80">
+                &copy; 2024 Bus Vara. All rights reserved.
+              </p>
             </div>
           </div>
         </div>
@@ -98,7 +130,9 @@ const Login = () => {
         {/* Right Side - Login Form */}
         <div className="lg:w-1/2 p-8 sm:p-12 lg:p-16 flex flex-col justify-center">
           <div className="mb-10">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-800">Welcome Back</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-800">
+              Welcome Back
+            </h2>
             <p className="text-gray-600 mt-2">Login to continue your journey</p>
           </div>
 
@@ -134,7 +168,7 @@ const Login = () => {
                   <Lock size={20} className="text-gray-400" />
                 </div>
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
@@ -148,9 +182,15 @@ const Login = () => {
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                 >
                   {showPassword ? (
-                    <EyeOff size={20} className="text-gray-400 hover:text-gray-600" />
+                    <EyeOff
+                      size={20}
+                      className="text-gray-400 hover:text-gray-600"
+                    />
                   ) : (
-                    <Eye size={20} className="text-gray-400 hover:text-gray-600" />
+                    <Eye
+                      size={20}
+                      className="text-gray-400 hover:text-gray-600"
+                    />
                   )}
                 </button>
               </div>
@@ -166,7 +206,9 @@ const Login = () => {
                   onChange={handleChange}
                   className="h-4 w-4 text-[#295A55] focus:ring-[#295A55] border-gray-300 rounded"
                 />
-                <label className="ml-2 text-gray-700 text-sm">Remember me</label>
+                <label className="ml-2 text-gray-700 text-sm">
+                  Remember me
+                </label>
               </div>
               <button
                 type="button"
@@ -193,7 +235,9 @@ const Login = () => {
                 <div className="w-full border-t border-gray-300"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Or continue with</span>
+                <span className="px-2 bg-white text-gray-500">
+                  Or continue with
+                </span>
               </div>
             </div>
           </div>
@@ -223,7 +267,7 @@ const Login = () => {
           {/* Signup Link */}
           <div className="mt-8 text-center">
             <p className="text-gray-600 text-sm">
-              Don't have an account?{' '}
+              Don't have an account?{" "}
               <NavLink
                 to="/signup"
                 className="text-[#295A55] hover:text-[#244D49] font-semibold"

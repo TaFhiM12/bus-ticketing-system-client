@@ -9,47 +9,53 @@ import Signup from "../pages/SignUp/SignUp";
 import Error from "../shared/components/Error";
 import PrivateRoute from "./PrivateRoute";
 import BusSearchResults from "../pages/BusSearchResults";
+import BookingPage from "../pages/BookingPage";
 
 export const router = createBrowserRouter([
   {
     path: "/",
     element: <MainLayout/>,
     children: [
-        {
-            index: true, element:<HomePage/>
-        },
-        {
-          path:'my-tickets',
-          element: <PrivateRoute>
-            <MyTicketPage/>
-          </PrivateRoute>
-        },
-        {
-          path: 'about',
-          element: <AboutPage/>
-        },
-        {
-          path: 'contact',
-          element: <ContactPage/>
-        },
-        {
-          path: 'login',
-          element: <Login/>
-        },
-        {
-          path: 'signup',
-          element: <Signup/>
-        },
-        {
-          path: 'results',
-          element: <PrivateRoute>
-            <BusSearchResults/>
-          </PrivateRoute>
-        },
-        {
-          path: '*',
-          element: <Error/>
-        }
+      {
+        index: true, 
+        element: <HomePage/>
+      },
+      {
+        path: 'my-tickets',
+        element: <PrivateRoute>
+          <MyTicketPage/>
+        </PrivateRoute>
+      },
+      {
+        path: 'about',
+        element: <AboutPage/>
+      },
+      {
+        path: 'contact',
+        element: <ContactPage/>
+      },
+      {
+        path: 'login',
+        element: <Login/>
+      },
+      {
+        path: 'signup',
+        element: <Signup/>
+      },
+      {
+        path: 'results',
+        element: <BusSearchResults/>
+      },
+      {
+        path: 'booking',
+        element: <PrivateRoute>
+          <BookingPage/>
+        </PrivateRoute>
+      },
+      {
+        path: '*',
+        element: <Error/>
+      }
     ]
   },
 ]);
