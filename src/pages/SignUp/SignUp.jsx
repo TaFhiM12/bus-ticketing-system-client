@@ -1,55 +1,105 @@
 // Signup.jsx
-import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Bus, User, Facebook, Github } from 'lucide-react';
-import { FcGoogle } from 'react-icons/fc';
-import { NavLink } from 'react-router';
-import useAuth from '../../hooks/useAuth';
+import React, { useState } from "react";
+import {
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  Bus,
+  User,
+  Facebook,
+  Github,
+} from "lucide-react";
+import { FcGoogle } from "react-icons/fc";
+import { NavLink } from "react-router";
+import useAuth from "../../hooks/useAuth";
+
+const API_URL = "http://localhost:5001";
 
 const Signup = () => {
-  const {createUser, signInWithGoogle} = useAuth();
+  const { createUser, signInWithGoogle } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    agreeToTerms: false
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    agreeToTerms: false,
   });
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const { name, email, password, confirmPassword, agreeToTerms } = formData;
-    
+
     if (password !== confirmPassword) {
-      alert('Passwords do not match!');
+      alert("Passwords do not match!");
       return;
     }
 
     if (!agreeToTerms) {
-      alert('You must agree to the terms and conditions!');
+      alert("You must agree to the terms and conditions!");
       return;
     }
 
-    createUser(email, password)
-      .then((userCredential) => {
-        const user = userCredential.user;
-        console.log('User created:', user);
-        // Optionally update profile with name
-      })
-      .catch((error) => {
-        console.error('Error creating user:', error);
-      });
-  };
+    try {
+      // ✅ Firebase Create User
+      const userCredential = await createUser(email, password);
+      const user = userCredential.user;
 
+      // ✅ Send user data to MongoDB
+      const res = await fetch(`${API_URL}/api/users/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uid: user.uid,
+          name,
+          email,
+        }),
+      });
+
+      // Check if response is OK
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
+      const data = await res.json();
+
+      if (!data.success) {
+        console.log("Registration failed:", data);
+        alert(data.error || "User registration failed");
+        return;
+      }
+
+      console.log("✅ Registered in MongoDB:", data.user);
+      alert("Account created successfully ✅");
+
+      // Optional: Redirect to login or home page
+      // window.location.href = "/login";
+    } catch (error) {
+      console.error("Signup error:", error);
+
+      // More specific error messages
+      if (error.message.includes("Failed to fetch")) {
+        alert(
+          "Cannot connect to server. Please check if the server is running.",
+        );
+      } else if (error.message.includes("HTTP error")) {
+        alert(`Server error: ${error.message}`);
+      } else {
+        alert(error.message || "Signup failed. Please try again.");
+      }
+    }
+  };
   return (
     <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-white">
       <div className="w-full max-w-6xl flex flex-col lg:flex-row rounded-3xl shadow-2xl overflow-hidden">
@@ -62,9 +112,11 @@ const Signup = () => {
               </div>
               <h1 className="text-4xl sm:text-5xl font-bold">Bus Vara</h1>
             </div>
-            <p className="text-xl sm:text-2xl font-medium opacity-90">Start Your Journey With Us</p>
+            <p className="text-xl sm:text-2xl font-medium opacity-90">
+              Start Your Journey With Us
+            </p>
           </div>
-          
+
           <div className="">
             <div className="space-y-4">
               <div className="flex items-center gap-3">
@@ -92,9 +144,11 @@ const Signup = () => {
                 <p className="text-lg">Easy Ticket Management</p>
               </div>
             </div>
-            
+
             <div className="mt-12 pt-8 border-t border-white/20">
-              <p className="text-sm opacity-80">&copy; 2024 Bus Vara. All rights reserved.</p>
+              <p className="text-sm opacity-80">
+                &copy; 2024 Bus Vara. All rights reserved.
+              </p>
             </div>
           </div>
         </div>
@@ -102,8 +156,12 @@ const Signup = () => {
         {/* Right Side - Signup Form */}
         <div className="lg:w-1/2 p-8 sm:p-12 lg:p-16 flex flex-col justify-center">
           <div className="mb-10">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-800">Create Account</h2>
-            <p className="text-gray-600 mt-2">Join us for a seamless travel experience</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-800">
+              Create Account
+            </h2>
+            <p className="text-gray-600 mt-2">
+              Join us for a seamless travel experience
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -159,7 +217,7 @@ const Signup = () => {
                   <Lock size={20} className="text-gray-400" />
                 </div>
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
@@ -173,9 +231,15 @@ const Signup = () => {
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                 >
                   {showPassword ? (
-                    <EyeOff size={20} className="text-gray-400 hover:text-gray-600" />
+                    <EyeOff
+                      size={20}
+                      className="text-gray-400 hover:text-gray-600"
+                    />
                   ) : (
-                    <Eye size={20} className="text-gray-400 hover:text-gray-600" />
+                    <Eye
+                      size={20}
+                      className="text-gray-400 hover:text-gray-600"
+                    />
                   )}
                 </button>
               </div>
@@ -191,7 +255,7 @@ const Signup = () => {
                   <Lock size={20} className="text-gray-400" />
                 </div>
                 <input
-                  type={showConfirmPassword ? 'text' : 'password'}
+                  type={showConfirmPassword ? "text" : "password"}
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}
@@ -205,9 +269,15 @@ const Signup = () => {
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                 >
                   {showConfirmPassword ? (
-                    <EyeOff size={20} className="text-gray-400 hover:text-gray-600" />
+                    <EyeOff
+                      size={20}
+                      className="text-gray-400 hover:text-gray-600"
+                    />
                   ) : (
-                    <Eye size={20} className="text-gray-400 hover:text-gray-600" />
+                    <Eye
+                      size={20}
+                      className="text-gray-400 hover:text-gray-600"
+                    />
                   )}
                 </button>
               </div>
@@ -224,8 +294,11 @@ const Signup = () => {
                 required
               />
               <label className="ml-2 text-gray-700 text-sm">
-                I agree to the{' '}
-                <button type="button" className="text-[#295A55] hover:text-[#244D49] font-medium">
+                I agree to the{" "}
+                <button
+                  type="button"
+                  className="text-[#295A55] hover:text-[#244D49] font-medium"
+                >
                   Terms and Conditions
                 </button>
               </label>
@@ -248,7 +321,9 @@ const Signup = () => {
                 <div className="w-full border-t border-gray-300"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Or sign up with</span>
+                <span className="px-2 bg-white text-gray-500">
+                  Or sign up with
+                </span>
               </div>
             </div>
           </div>
@@ -257,10 +332,34 @@ const Signup = () => {
           <div className="mt-6 grid grid-cols-3 gap-3">
             <button
               type="button"
+              onClick={async () => {
+                try {
+                  const userCredential = await signInWithGoogle();
+                  const user = userCredential.user;
+
+                  // register to DB
+                  await fetch(`${API_URL}/api/users/register`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      uid: user.uid,
+                      name: user.displayName || "Google User",
+                      email: user.email,
+                      photoURL: user.photoURL,
+                    }),
+                  });
+
+                  alert("Google signup successful ✅");
+                } catch (err) {
+                  console.log(err);
+                  alert(err.message);
+                }
+              }}
               className="flex items-center justify-center py-3 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200"
             >
               <FcGoogle className="w-5 h-5" />
             </button>
+
             <button
               type="button"
               className="flex items-center justify-center py-3 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200"
@@ -278,7 +377,7 @@ const Signup = () => {
           {/* Login Link */}
           <div className="mt-8 text-center">
             <p className="text-gray-600 text-sm">
-              Already have an account?{' '}
+              Already have an account?{" "}
               <NavLink
                 to="/login"
                 className="text-[#295A55] hover:text-[#244D49] font-semibold"

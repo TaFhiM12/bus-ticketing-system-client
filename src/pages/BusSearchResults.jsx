@@ -54,7 +54,7 @@ const BusSearchResults = () => {
   const fetchBuses = async (params) => {
     try {
       setLoading(true);
-      const response = await axios.post("https://bus-ticketing-system-server-1.onrender.com/api/buses/search", {
+      const response = await axios.post("http://localhost:5001/api/buses/search", {
         ...params,
         sortBy,
         filters: Object.keys(filters).length > 0 ? filters : {}
@@ -197,7 +197,7 @@ const BusSearchResults = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-8 px-4">
+      <div className="min-h-screen bg-linear-to-b from-gray-50 to-gray-100 py-8 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#295A55]"></div>
@@ -209,7 +209,7 @@ const BusSearchResults = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-8 px-4">
+    <div className="min-h-screen bg-linear-to-b from-gray-50 to-gray-100 py-8 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -452,7 +452,7 @@ const BusSearchResults = () => {
                       <div className="flex flex-col lg:flex-row gap-6">
                         {/* Left Column - Timing & Route */}
                         <div className="lg:w-1/3">
-                          <div className="bg-gradient-to-r from-[#295A55] to-[#3A7A72] text-white rounded-lg p-4">
+                          <div className="bg-linear-to-r from-[#295A55] to-[#3A7A72] text-white rounded-lg p-4">
                             <div className="flex justify-between items-center mb-4">
                               <div className="text-center">
                                 <div className="text-2xl font-bold">
@@ -630,7 +630,7 @@ const BusSearchResults = () => {
                           <div className="space-y-3">
                             <button
                               onClick={() => handleBookNow(bus)}
-                              className="w-full bg-gradient-to-r from-[#295A55] to-[#3A7A72] text-white py-3 rounded-lg font-semibold hover:from-[#244D49] hover:to-[#346B64] transition-all shadow-md hover:shadow-lg"
+                              className="w-full bg-linear-to-r from-[#295A55] to-[#3A7A72] text-white py-3 rounded-lg font-semibold hover:from-[#244D49] hover:to-[#346B64] transition-all shadow-md hover:shadow-lg"
                             >
                               Book Now
                             </button>
@@ -962,7 +962,7 @@ const BusSearchResults = () => {
               
               <div className="space-y-6">
                 {/* Route & Timing */}
-                <div className="bg-gradient-to-r from-[#295A55] to-[#3A7A72] text-white rounded-lg p-4">
+                <div className="bg-linear-to-r from-[#295A55] to-[#3A7A72] text-white rounded-lg p-4">
                   <div className="flex justify-between items-center">
                     <div className="text-center">
                       <div className="text-lg font-bold">{formatTime(selectedBus.departureTime)}</div>

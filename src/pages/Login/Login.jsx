@@ -2,13 +2,16 @@
 import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Bus, Facebook, Github } from 'lucide-react';
 import { FcGoogle } from 'react-icons/fc';
-import { NavLink } from 'react-router';
+import { NavLink, useLocation, useNavigate} from 'react-router';
 import useAuth from '../../hooks/useAuth';
 
 const Login = () => {
   const {signInUser, signInWithGoogle} = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({});
+  const location = useLocation();
+  const from = location.state?.from || '/';
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -24,11 +27,24 @@ const Login = () => {
       .then(result => {
         const user = result.user;
         console.log('Logged in user:', user);
+        // Redirect to the page user intended to visit before login
+        navigate(from, { replace: true });
       })
       .catch(error => {
         console.error('Login error:', error);
       });
   };
+
+  // const handleGoogleSignIn = () => {
+  //   signInWithGoogle()
+  //     .then(result => {
+  //       const user = result.user;
+  //       console.log('Google signed in user:', user);
+  //     })
+  //     .catch(error => {
+  //       console.error('Google sign-in error:', error);
+  //     });
+  // }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-white">

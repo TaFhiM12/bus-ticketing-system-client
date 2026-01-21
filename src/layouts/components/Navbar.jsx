@@ -1,14 +1,28 @@
 import React from "react";
-import { NavLink } from "react-router";
+import { NavLink, useNavigate } from "react-router";
 import { Bus, Ticket, Phone, User, Home, Info } from "lucide-react";
+import useAuth from "../../hooks/useAuth";
 
 const Navbar = () => {
+  const { user , logOut } = useAuth();
+  const navigate = useNavigate();
   const links = [
     { path: '/', label: 'Home', icon: Home },
     { path: '/my-tickets', label: 'My Tickets', icon: Ticket },
     { path: '/contact', label: 'Contact', icon: Phone },
     { path: '/about', label: 'About', icon: Info }
   ];
+
+  const handleSignOut = () => {
+    logOut()
+      .then(() => {
+        // Sign-out successful.
+        navigate('/login');
+      })
+      .catch((error) => {
+        console.error("Error signing out:", error);
+      });
+  }
 
   return (
     <div className="bg-[#295A55] shadow-lg fixed top-0 left-0 right-0 z-50">
@@ -34,7 +48,7 @@ const Navbar = () => {
           </div>
           <ul
             tabIndex={0}
-            className="menu menu-lg dropdown-content bg-[#295A55] text-white rounded-box z-[100] mt-3 w-64 p-4 shadow-2xl border border-white/10"
+            className="menu menu-lg dropdown-content bg-[#295A55] text-white rounded-box z-100 mt-3 w-64 p-4 shadow-2xl border border-white/10"
           >
             {links.map((link) => (
               <li key={link.path} className="my-1">
@@ -101,22 +115,42 @@ const Navbar = () => {
       <div className="navbar-end mr-4">
         {/* Login Button - Desktop */}
         <div className="hidden lg:flex items-center gap-4">
-          <NavLink 
-            to="/login"
-            className="btn bg-white text-[#295A55] border-none hover:from-cyan-500 hover:to-cyan-600 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 px-8"
-          >
-            Login
-          </NavLink>
+          {user ? (
+            <button 
+              onClick={handleSignOut}
+              className="btn btn-sm bg-white text-[#295A55] hover:bg-gray-100 px-4 flex items-center gap-2"
+            >
+              <User className="w-4 h-4" />
+              SignOut
+            </button>
+          ) : (
+            <NavLink 
+              to="/login"
+              className="btn btn-sm bg-white text-[#295A55] hover:bg-gray-100 px-4"
+            >
+              Login
+            </NavLink>
+          )}
         </div>
 
         {/* Login Button - Mobile */}
         <div className="lg:hidden">
-          <NavLink 
-            to="/login"
-            className="btn btn-sm bg-white text-[#295A55] hover:bg-gray-100 px-4"
-          >
-            Login
-          </NavLink>
+          {user ? (
+            <button 
+              onClick={handleSignOut}
+              className="btn btn-sm bg-white text-[#295A55] hover:bg-gray-100 px-4 flex items-center gap-2"
+            >
+              <User className="w-4 h-4" />
+              SignOut
+            </button>
+          ) : (
+            <NavLink 
+              to="/login"
+              className="btn btn-sm bg-white text-[#295A55] hover:bg-gray-100 px-4"
+            >
+              Login
+            </NavLink>
+          )}
         </div>
       </div>
     </nav>

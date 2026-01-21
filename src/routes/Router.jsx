@@ -42,7 +42,9 @@ export const router = createBrowserRouter([
         },
         {
           path: 'results',
-          element: <BusSearchResults/>
+          element: <PrivateRoute>
+            <BusSearchResults/>
+          </PrivateRoute>
         },
         {
           path: '*',
