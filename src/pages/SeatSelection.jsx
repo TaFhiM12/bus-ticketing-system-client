@@ -331,14 +331,16 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
         return baseClass + sizeClass + " bg-gray-100 border-2 border-gray-300 cursor-not-allowed opacity-60";
       case 'selected':
         return baseClass + sizeClass + " bg-linear-to-br from-green-500 to-emerald-600 border-2 border-emerald-700 text-white shadow-lg";
-      case 'locked':
+      case 'locked': {
         const timer = timerCountdowns[seatNumber] || 0;
         return baseClass + sizeClass + " bg-linear-to-br from-orange-400 to-red-500 border-2 border-red-600 text-white animate-pulse cursor-not-allowed";
-      default:
+      }
+      default: {
         const premiumClass = seatType === 'window' 
           ? "bg-linear-to-br from-blue-50 to-indigo-100 border-2 border-blue-300 hover:border-blue-500"
           : "bg-linear-to-br from-gray-50 to-gray-100 border-2 border-gray-200 hover:border-gray-400";
         return baseClass + sizeClass + premiumClass;
+      }
     }
   };
 
@@ -468,7 +470,7 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
                   </div>
 
                   {/* Driver Section */}
-                  <div className="relative mb-6">
+                  <div className="relative mb-20">
                     <div className="absolute left-1/2 transform -translate-x-1/2 top-0">
                       <div className="bg-linear-to-r from-gray-800 to-gray-900 text-white px-6 py-2 rounded-t-lg">
                         <div className="flex items-center justify-center gap-2">
@@ -566,7 +568,7 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
                   </div>
 
                   {/* Exit Section */}
-                  <div className="relative mt-8">
+                  {/* <div className="relative mt-8">
                     <div className="absolute left-1/2 transform -translate-x-1/2 bottom-0">
                       <div className="bg-linear-to-r from-red-500 to-red-600 text-white px-8 py-3 rounded-b-lg">
                         <div className="flex items-center justify-center gap-2">
@@ -575,7 +577,7 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </div> */}
                 </div>
 
                 {/* Special Seats Section */}
