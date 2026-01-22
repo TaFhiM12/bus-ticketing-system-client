@@ -36,7 +36,7 @@ const Login = () => {
     signInUser(formData.email, formData.password)
       .then((result) => {
         const user = result.user;
-        console.log("Logged in user:", user);
+        // console.log("Logged in user:", user);
 
         // Check for saved search data
         const savedSearchData = sessionStorage.getItem("busSearchData");

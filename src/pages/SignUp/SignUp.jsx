@@ -75,12 +75,12 @@ const Signup = () => {
       const data = await res.json();
 
       if (!data.success) {
-        console.log("Registration failed:", data);
+        // console.log("Registration failed:", data);
         alert(data.error || "User registration failed");
         return;
       }
 
-      console.log("✅ Registered in MongoDB:", data.user);
+      // console.log("✅ Registered in MongoDB:", data.user);
       alert("Account created successfully ✅");
 
       // Optional: Redirect to login or home page
@@ -351,7 +351,7 @@ const Signup = () => {
 
                   alert("Google signup successful ✅");
                 } catch (err) {
-                  console.log(err);
+                  // console.log(err);
                   alert(err.message);
                 }
               }}

@@ -73,7 +73,7 @@ const BusSearchResults = () => {
             // Check if data is fresh (less than 10 minutes old)
             const isFresh = new Date().getTime() - (searchData.timestamp || 0) < 10 * 60 * 1000;
             if (isFresh) {
-              console.log("Using session search data");
+              // console.log("Using session search data");
             } else {
               searchData = null;
               sessionStorage.removeItem('busSearchData');
