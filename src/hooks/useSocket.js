@@ -12,7 +12,7 @@ export const useSocket = (busId, userId) => {
 
     const socketUrl = window.location.hostname === 'localhost' 
       ? 'http://localhost:5001'
-      : 'https://bus-ticketing-system-server-2.onrender.com';
+      : pro;
     
     const newSocket = io(socketUrl, {
       transports: ['websocket', 'polling'],

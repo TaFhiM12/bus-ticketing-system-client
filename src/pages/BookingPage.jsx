@@ -124,7 +124,7 @@ const BookingPage = () => {
         searchParams: searchParams
       };
 
-      const response = await axios.post("https://bus-ticketing-system-server-2.onrender.com/api/bookings", bookingData);
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/bookings`, bookingData);
       
       if (response.data.success) {
         setBookingConfirmed(true);

@@ -3,7 +3,6 @@ import {
   X, 
   User, 
   AlertCircle, 
-  Loader2, 
   Clock,
   Users,
   Shield,
@@ -13,22 +12,16 @@ import {
   Baby,
   Zap,
   Eye,
-  EyeOff,
   Info,
-  Timer,
   Minus,
   Plus,
-  MapPin,
-  Star,
-  CreditCard,
-  Home,
-  DoorOpen
+  DoorOpen,
+  RotateCw
 } from 'lucide-react';
 import axios from 'axios';
 import io from 'socket.io-client';
 import useAuth from '../hooks/useAuth';
 import Loading from '../shared/components/Loading';
-
 
 const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
   const { user } = useAuth();
@@ -44,7 +37,9 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
   });
   const [timerCountdowns, setTimerCountdowns] = useState({});
   const [showSeatInfo, setShowSeatInfo] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const timerRef = useRef(null);
+  const socketRef = useRef(null);
 
   // Initialize socket connection
   useEffect(() => {
@@ -52,14 +47,23 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
 
     const socketUrl = window.location.hostname === 'localhost' 
       ? 'http://localhost:5001'
-      : 'https://bus-ticketing-system-server-2.onrender.com';
+      : `${import.meta.env.VITE_BACKEND_URL}`;
     
     const newSocket = io(socketUrl, {
       transports: ['websocket', 'polling'],
-      withCredentials: true
+      withCredentials: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000
     });
 
+    socketRef.current = newSocket;
     setSocket(newSocket);
+
+    // Register user with socket
+    newSocket.emit('register-user', { 
+      userId: user?.uid || 'anonymous'
+    });
 
     // Join bus room
     newSocket.emit('join-bus', { 
@@ -69,26 +73,34 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
 
     // Socket event listeners
     newSocket.on('seat-status', (data) => {
-      setRealTimeSeats(prev => ({
-        ...prev,
+      console.log('Received seat-status:', data);
+      setRealTimeSeats({
         booked: data.bookedSeats || [],
         selectedByOthers: data.selectedByOthers || []
-      }));
+      });
     });
 
     newSocket.on('seat-selected', (data) => {
-      setRealTimeSeats(prev => ({
-        ...prev,
-        selectedByOthers: [...prev.selectedByOthers, {
-          seatNumber: data.seatNumber,
-          selectedBy: data.selectedBy,
-          selectedAt: data.selectedAt,
-          expiresIn: data.expiresIn
-        }]
-      }));
+      console.log('Seat selected by others:', data);
+      setRealTimeSeats(prev => {
+        // Check if seat is already in selectedByOthers
+        const exists = prev.selectedByOthers.find(s => s.seatNumber === data.seatNumber);
+        if (exists) return prev;
+        
+        return {
+          ...prev,
+          selectedByOthers: [...prev.selectedByOthers, {
+            seatNumber: data.seatNumber,
+            selectedBy: data.selectedBy,
+            selectedAt: data.selectedAt,
+            expiresIn: data.expiresIn
+          }]
+        };
+      });
     });
 
     newSocket.on('seat-deselected', (data) => {
+      console.log('Seat deselected by others:', data);
       setRealTimeSeats(prev => ({
         ...prev,
         selectedByOthers: prev.selectedByOthers.filter(
@@ -98,6 +110,7 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
     });
 
     newSocket.on('seats-booked', (data) => {
+      console.log('Seats booked:', data);
       setRealTimeSeats(prev => ({
         booked: [...prev.booked, ...data.bookedSeats],
         selectedByOthers: prev.selectedByOthers.filter(
@@ -107,12 +120,47 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
     });
 
     newSocket.on('seats-released', (data) => {
+      console.log('Seats released:', data);
       setRealTimeSeats(prev => ({
         ...prev,
         selectedByOthers: prev.selectedByOthers.filter(
           seat => !data.seats.includes(seat.seatNumber)
         )
       }));
+    });
+
+    // Listen for seats expired from server
+    newSocket.on('seats-expired', (data) => {
+      console.log('Seats expired:', data);
+      setRealTimeSeats(prev => ({
+        ...prev,
+        selectedByOthers: prev.selectedByOthers.filter(
+          seat => !data.seats.includes(seat.seatNumber)
+        )
+      }));
+      
+      // Also check if any of our selected seats are expired
+      const expiredFromOurSelection = selectedSeats.filter(seat => 
+        data.seats.includes(seat.seatNumber)
+      );
+      
+      if (expiredFromOurSelection.length > 0) {
+        setSelectedSeats(prev => prev.filter(seat => 
+          !data.seats.includes(seat.seatNumber)
+        ));
+        
+        // Notify user
+        expiredFromOurSelection.forEach(seat => {
+          alert(`Seat ${seat.seatNumber} selection has expired. Please select again.`);
+        });
+      }
+    });
+
+    // Listen for our own seat expiry
+    newSocket.on('your-seat-expired', (data) => {
+      console.log('Your seat expired:', data);
+      setSelectedSeats(prev => prev.filter(seat => seat.seatNumber !== data.seatNumber));
+      alert(`Your selection for seat ${data.seatNumber} has expired. Please select again.`);
     });
 
     newSocket.on('seat-locked', (data) => {
@@ -123,15 +171,39 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
       alert(`Seat ${data.seatNumber} is no longer available.`);
     });
 
+    newSocket.on('seat-status-update', (data) => {
+      console.log('Seat status update:', data);
+      setRealTimeSeats(prev => ({
+        ...prev,
+        selectedByOthers: data.selectedByOthers || []
+      }));
+    });
+
     newSocket.on('error', (data) => {
       console.error('Socket error:', data);
       setError(data.message);
     });
 
+    // Handle connection issues
+    newSocket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+      setError('Connection error. Please try again.');
+    });
+
+    newSocket.on('reconnect', (attemptNumber) => {
+      console.log('Socket reconnected, attempt:', attemptNumber);
+      if (bus?._id) {
+        newSocket.emit('join-bus', { 
+          busId: bus._id,
+          userId: user?.uid || 'anonymous'
+        });
+      }
+    });
+
     return () => {
-      if (newSocket) {
-        newSocket.emit('leave-bus', { busId: bus._id });
-        newSocket.disconnect();
+      if (socketRef.current) {
+        socketRef.current.emit('leave-bus', { busId: bus._id });
+        socketRef.current.disconnect();
       }
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -139,20 +211,70 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
     };
   }, [bus?._id, user?.uid]);
 
-  // Update timer countdowns
+  // Update timer countdowns and check for expired seats
   useEffect(() => {
     timerRef.current = setInterval(() => {
       const now = new Date();
       const newCountdowns = {};
+      let shouldUpdateOthers = false;
+      let shouldUpdateSelected = false;
       
-      realTimeSeats.selectedByOthers.forEach(seat => {
+      // Check seats selected by others
+      const updatedSelectedByOthers = realTimeSeats.selectedByOthers.filter(seat => {
         if (seat.selectedAt) {
           const selectedTime = new Date(seat.selectedAt);
           const elapsedSeconds = Math.floor((now - selectedTime) / 1000);
-          const remaining = Math.max(0, 120 - elapsedSeconds); // 2 minutes timeout
-          newCountdowns[seat.seatNumber] = remaining;
+          const remaining = Math.max(0, 120 - elapsedSeconds);
+          
+          if (remaining > 0) {
+            newCountdowns[seat.seatNumber] = remaining;
+            return true;
+          } else {
+            shouldUpdateOthers = true;
+            return false;
+          }
         }
+        return false;
       });
+      
+      // Check our own selected seats
+      const updatedSelectedSeats = selectedSeats.filter(seat => {
+        if (seat.selectedAt) {
+          const selectedTime = new Date(seat.selectedAt);
+          const elapsedSeconds = Math.floor((now - selectedTime) / 1000);
+          const remaining = Math.max(0, 120 - elapsedSeconds);
+          
+          if (remaining > 0) {
+            newCountdowns[seat.seatNumber] = remaining;
+            return true;
+          } else {
+            shouldUpdateSelected = true;
+            
+            // Notify server that our seat has expired
+            if (socketRef.current) {
+              socketRef.current.emit('user-seat-expired', {
+                busId: bus._id,
+                seatNumber: seat.seatNumber
+              });
+            }
+            
+            return false;
+          }
+        }
+        return true;
+      });
+      
+      // Update states if needed
+      if (shouldUpdateOthers) {
+        setRealTimeSeats(prev => ({
+          ...prev,
+          selectedByOthers: updatedSelectedByOthers
+        }));
+      }
+      
+      if (shouldUpdateSelected) {
+        setSelectedSeats(updatedSelectedSeats);
+      }
       
       setTimerCountdowns(newCountdowns);
     }, 1000);
@@ -162,7 +284,20 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
         clearInterval(timerRef.current);
       }
     };
-  }, [realTimeSeats.selectedByOthers]);
+  }, [realTimeSeats.selectedByOthers, selectedSeats, bus?._id]);
+
+  // Refresh seat status manually
+  const refreshSeatStatus = () => {
+    if (socketRef.current && bus?._id) {
+      setRefreshing(true);
+      socketRef.current.emit('refresh-seat-selection', { busId: bus._id });
+      
+      // Also fetch fresh data from API
+      fetchSeatLayout();
+      
+      setTimeout(() => setRefreshing(false), 1000);
+    }
+  };
 
   useEffect(() => {
     if (bus?._id) {
@@ -176,7 +311,7 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.get(`https://bus-ticketing-system-server-2.onrender.com/api/buses/${bus._id}/seats`);
+      const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/buses/${bus._id}/seats`);
       
       if (response.data.success && response.data.seatLayout) {
         const layout = Array.isArray(response.data.seatLayout) 
@@ -247,11 +382,21 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
       return 'selected';
     }
     
-    // Check if selected by others
+    // Check if selected by others (with expiration check)
     const otherSelection = realTimeSeats.selectedByOthers.find(
       s => s.seatNumber === seatNumber
     );
-    if (otherSelection) {
+    
+    if (otherSelection && otherSelection.selectedAt) {
+      const now = new Date();
+      const selectedTime = new Date(otherSelection.selectedAt);
+      const elapsedSeconds = (now - selectedTime) / 1000;
+      
+      // If expired, don't show as locked
+      if (elapsedSeconds >= 120) {
+        return 'available';
+      }
+      
       return 'locked';
     }
     
@@ -280,8 +425,8 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
     if (selectedSeats.find(s => s.seatNumber === seat.seatNumber)) {
       // Deselect seat
       setSelectedSeats(prev => prev.filter(s => s.seatNumber !== seat.seatNumber));
-      if (socket) {
-        socket.emit('select-seat', {
+      if (socketRef.current) {
+        socketRef.current.emit('select-seat', {
           busId: bus._id,
           seatNumber: seat.seatNumber,
           action: 'deselect',
@@ -289,10 +434,15 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
         });
       }
     } else {
-      // Select seat
-      setSelectedSeats(prev => [...prev, seat]);
-      if (socket) {
-        socket.emit('select-seat', {
+      // Select seat with current timestamp
+      const seatWithTimestamp = {
+        ...seat,
+        selectedAt: new Date().toISOString()
+      };
+      
+      setSelectedSeats(prev => [...prev, seatWithTimestamp]);
+      if (socketRef.current) {
+        socketRef.current.emit('select-seat', {
           busId: bus._id,
           seatNumber: seat.seatNumber,
           action: 'select',
@@ -326,13 +476,22 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
     const baseClass = "relative flex flex-col items-center justify-center rounded-lg transition-all duration-300 transform hover:scale-105 cursor-pointer ";
     const sizeClass = "w-16 h-16";
     
+    const timer = timerCountdowns[seatNumber] || 0;
+    const isAboutToExpire = timer > 0 && timer < 30;
+    
     switch(status) {
       case 'booked':
         return baseClass + sizeClass + " bg-gray-100 border-2 border-gray-300 cursor-not-allowed opacity-60";
-      case 'selected':
+      case 'selected': {
+        if (isAboutToExpire) {
+          return baseClass + sizeClass + " bg-linear-to-br from-yellow-500 to-orange-500 border-2 border-orange-600 text-white shadow-lg animate-pulse";
+        }
         return baseClass + sizeClass + " bg-linear-to-br from-green-500 to-emerald-600 border-2 border-emerald-700 text-white shadow-lg";
+      }
       case 'locked': {
-        const timer = timerCountdowns[seatNumber] || 0;
+        if (isAboutToExpire) {
+          return baseClass + sizeClass + " bg-linear-to-br from-orange-300 to-red-400 border-2 border-red-500 text-white animate-pulse cursor-not-allowed";
+        }
         return baseClass + sizeClass + " bg-linear-to-br from-orange-400 to-red-500 border-2 border-red-600 text-white animate-pulse cursor-not-allowed";
       }
       default: {
@@ -356,8 +515,8 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
     }
 
     // Notify others that seats are booked
-    if (socket) {
-      socket.emit('booking-completed', {
+    if (socketRef.current) {
+      socketRef.current.emit('booking-completed', {
         busId: bus._id,
         bookedSeats: selectedSeats.map(s => s.seatNumber)
       });
@@ -428,6 +587,15 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
             </div>
             <div className="flex items-center gap-3">
               <button
+                onClick={refreshSeatStatus}
+                disabled={refreshing}
+                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center gap-2"
+                title="Refresh Seat Status"
+              >
+                <RotateCw size={20} className={`text-gray-600 ${refreshing ? 'animate-spin' : ''}`} />
+                <span className="text-sm">Refresh</span>
+              </button>
+              <button
                 onClick={() => setShowSeatInfo(!showSeatInfo)}
                 className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200"
                 title="Seat Information"
@@ -465,6 +633,10 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
                       <div className="flex items-center gap-2">
                         <div className="w-4 h-4 bg-orange-500 rounded animate-pulse"></div>
                         <span className="text-sm">Processing</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-yellow-500 rounded animate-pulse"></div>
+                        <span className="text-sm">Expiring Soon</span>
                       </div>
                     </div>
                   </div>
@@ -552,6 +724,15 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
                                     </div>
                                   )}
                                   
+                                  {/* Timer for selected seats */}
+                                  {isSelected && timerCountdowns[seat.seatNumber] > 0 && (
+                                    <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2">
+                                      <div className="text-xs font-bold text-orange-600 bg-orange-100 px-2 py-1 rounded">
+                                        {formatTimer(timerCountdowns[seat.seatNumber])}
+                                      </div>
+                                    </div>
+                                  )}
+                                  
                                   {/* Seat Type Label */}
                                   <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2">
                                     <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/80 text-gray-700">
@@ -566,18 +747,6 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
                       </div>
                     </div>
                   </div>
-
-                  {/* Exit Section */}
-                  {/* <div className="relative mt-8">
-                    <div className="absolute left-1/2 transform -translate-x-1/2 bottom-0">
-                      <div className="bg-linear-to-r from-red-500 to-red-600 text-white px-8 py-3 rounded-b-lg">
-                        <div className="flex items-center justify-center gap-2">
-                          <Zap size={16} />
-                          <span className="text-sm font-medium">Emergency Exit</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div> */}
                 </div>
 
                 {/* Special Seats Section */}
@@ -646,30 +815,42 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
                   
                   {selectedSeats.length > 0 ? (
                     <div className="space-y-3">
-                      {selectedSeats.map((seat) => (
-                        <div key={seat.seatNumber} className="flex items-center justify-between p-3 bg-linear-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-linear-to-br from-green-500 to-emerald-600 flex items-center justify-center">
-                              <span className="text-white font-bold">{seat.seatNumber}</span>
+                      {selectedSeats.map((seat) => {
+                        const timer = timerCountdowns[seat.seatNumber] || 0;
+                        return (
+                          <div key={seat.seatNumber} className="flex items-center justify-between p-3 bg-linear-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                                timer > 0 && timer < 30 
+                                  ? "bg-linear-to-br from-yellow-500 to-orange-500" 
+                                  : "bg-linear-to-br from-green-500 to-emerald-600"
+                              }`}>
+                                <span className="text-white font-bold">{seat.seatNumber}</span>
+                              </div>
+                              <div>
+                                <div className="font-medium text-gray-800">Seat {seat.seatNumber}</div>
+                                <div className="text-xs text-gray-500 capitalize">{seat.type} seat</div>
+                                {timer > 0 && (
+                                  <div className="text-xs text-orange-600 font-medium">
+                                    Expires in: {formatTimer(timer)}
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <div>
-                              <div className="font-medium text-gray-800">Seat {seat.seatNumber}</div>
-                              <div className="text-xs text-gray-500 capitalize">{seat.type} seat</div>
+                            <div className="text-right">
+                              <div className="font-bold text-[#295A55]">
+                                ৳{Math.round((bus.discountPrice < bus.price ? bus.discountPrice : bus.price) * seat.priceMultiplier)}
+                              </div>
+                              <button
+                                onClick={() => handleSeatSelect(seat)}
+                                className="text-xs text-red-500 hover:text-red-700"
+                              >
+                                Remove
+                              </button>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <div className="font-bold text-[#295A55]">
-                              ৳{Math.round((bus.discountPrice < bus.price ? bus.discountPrice : bus.price) * seat.priceMultiplier)}
-                            </div>
-                            <button
-                              onClick={() => handleSeatSelect(seat)}
-                              className="text-xs text-red-500 hover:text-red-700"
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="text-center py-4">
@@ -799,6 +980,20 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded bg-linear-to-br from-yellow-500 to-orange-500"></div>
+                    <div>
+                      <div className="font-medium">Expiring Soon</div>
+                      <div className="text-sm text-gray-500">Less than 30 seconds left</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded bg-linear-to-br from-orange-400 to-red-500 animate-pulse"></div>
+                    <div>
+                      <div className="font-medium">Processing</div>
+                      <div className="text-sm text-gray-500">Selected by another user</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded bg-linear-to-br from-blue-50 to-indigo-100 border-2 border-blue-300"></div>
                     <div>
                       <div className="font-medium">Window Seat</div>
@@ -817,13 +1012,6 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
                     <div>
                       <div className="font-medium">Booked Seat</div>
                       <div className="text-sm text-gray-500">Already taken</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded bg-linear-to-br from-orange-400 to-red-500 animate-pulse"></div>
-                    <div>
-                      <div className="font-medium">Processing</div>
-                      <div className="text-sm text-gray-500">Selected by another user</div>
                     </div>
                   </div>
                 </div>
