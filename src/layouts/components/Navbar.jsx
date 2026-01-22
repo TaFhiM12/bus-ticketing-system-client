@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink, useNavigate } from "react-router";
+import { Link, NavLink, useNavigate } from "react-router";
 import { Bus, Ticket, Phone, User, Home, Info } from "lucide-react";
 import useAuth from "../../hooks/useAuth";
 
@@ -74,9 +74,9 @@ const Navbar = () => {
         {/* Logo */}
         <div className=" items-center gap-3 ml-4">
         
-          <span className="text-2xl font-bold text-white hidden sm:block">
+          <Link to="/" className="text-2xl font-bold text-white hidden sm:block">
             BUS <span className="text-cyan-200">VARA</span>
-          </span>
+          </Link>
         </div>
       </div>
 

@@ -11,6 +11,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import axios from 'axios';
+import { useEffect } from 'react';
 
 const BookingPage = () => {
   const location = useLocation();
@@ -38,6 +39,9 @@ const BookingPage = () => {
   const [bookingConfirmed, setBookingConfirmed] = useState(false);
   const [bookingDetails, setBookingDetails] = useState(null);
 
+  useEffect(() => {
+      document.title = "BUS VARA | Booking";
+    }, []);
   if (!bus || !selectedSeats) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -218,6 +222,7 @@ const BookingPage = () => {
       </div>
     );
   }
+  
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">

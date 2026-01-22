@@ -27,6 +27,7 @@ import {
 import axios from 'axios';
 import io from 'socket.io-client';
 import useAuth from '../hooks/useAuth';
+import Loading from '../shared/components/Loading';
 
 
 const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
@@ -329,14 +330,14 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
       case 'booked':
         return baseClass + sizeClass + " bg-gray-100 border-2 border-gray-300 cursor-not-allowed opacity-60";
       case 'selected':
-        return baseClass + sizeClass + " bg-gradient-to-br from-green-500 to-emerald-600 border-2 border-emerald-700 text-white shadow-lg";
+        return baseClass + sizeClass + " bg-linear-to-br from-green-500 to-emerald-600 border-2 border-emerald-700 text-white shadow-lg";
       case 'locked':
         const timer = timerCountdowns[seatNumber] || 0;
-        return baseClass + sizeClass + " bg-gradient-to-br from-orange-400 to-red-500 border-2 border-red-600 text-white animate-pulse cursor-not-allowed";
+        return baseClass + sizeClass + " bg-linear-to-br from-orange-400 to-red-500 border-2 border-red-600 text-white animate-pulse cursor-not-allowed";
       default:
         const premiumClass = seatType === 'window' 
-          ? "bg-gradient-to-br from-blue-50 to-indigo-100 border-2 border-blue-300 hover:border-blue-500"
-          : "bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 hover:border-gray-400";
+          ? "bg-linear-to-br from-blue-50 to-indigo-100 border-2 border-blue-300 hover:border-blue-500"
+          : "bg-linear-to-br from-gray-50 to-gray-100 border-2 border-gray-200 hover:border-gray-400";
         return baseClass + sizeClass + premiumClass;
     }
   };
@@ -375,24 +376,7 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
   };
 
   if (loading) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
-          <div className="flex justify-center items-center h-96">
-            <div className="text-center">
-              <div className="relative">
-                <div className="w-20 h-20 border-4 border-[#295A55] border-t-transparent rounded-full animate-spin mx-auto"></div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Sofa className="text-[#295A55]" size={32} />
-                </div>
-              </div>
-              <p className="mt-4 text-gray-600 font-medium">Loading interactive seat selection...</p>
-              <p className="text-sm text-gray-500">Connecting to real-time server</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <Loading/>
   }
 
   if (!bus) {
@@ -405,7 +389,7 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
             <p className="text-gray-600 mb-6">Unable to load bus information for seat selection.</p>
             <button
               onClick={onClose}
-              className="px-8 py-3 bg-gradient-to-r from-[#295A55] to-[#3A7A72] text-white rounded-xl hover:from-[#244D49] hover:to-[#346B64] font-medium"
+              className="px-8 py-3 bg-linear-to-r from-[#295A55] to-[#3A7A72] text-white rounded-xl hover:from-[#244D49] hover:to-[#346B64] font-medium"
             >
               Close
             </button>
@@ -462,7 +446,7 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
           <div className="grid grid-cols-1 lg:grid-cols-4 h-full">
             {/* Left Column - Bus Layout */}
             <div className="lg:col-span-3 p-6">
-              <div className="bg-gradient-to-b from-gray-50 to-white rounded-2xl p-6 border border-gray-200">
+              <div className="bg-linear-to-b from-gray-50 to-white rounded-2xl p-6 border border-gray-200">
                 {/* Bus Top View */}
                 <div className="mb-8">
                   <div className="flex items-center justify-between mb-4">
@@ -486,7 +470,7 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
                   {/* Driver Section */}
                   <div className="relative mb-6">
                     <div className="absolute left-1/2 transform -translate-x-1/2 top-0">
-                      <div className="bg-gradient-to-r from-gray-800 to-gray-900 text-white px-6 py-2 rounded-t-lg">
+                      <div className="bg-linear-to-r from-gray-800 to-gray-900 text-white px-6 py-2 rounded-t-lg">
                         <div className="flex items-center justify-center gap-2">
                           <Crown size={16} />
                           <span className="text-sm font-medium">Driver Cabin</span>
@@ -499,7 +483,7 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
                   <div className="relative">
                     {/* Left Aisle */}
                     <div className="absolute left-0 top-0 bottom-0 w-16 flex items-center justify-center">
-                      <div className="h-full w-1 bg-gradient-to-b from-gray-300 to-gray-400"></div>
+                      <div className="h-full w-1 bg-linear-to-b from-gray-300 to-gray-400"></div>
                       <div className="absolute text-xs text-gray-500 rotate-90 whitespace-nowrap">
                         Aisle
                       </div>
@@ -507,7 +491,7 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
 
                     {/* Right Aisle */}
                     <div className="absolute right-0 top-0 bottom-0 w-16 flex items-center justify-center">
-                      <div className="h-full w-1 bg-gradient-to-b from-gray-300 to-gray-400"></div>
+                      <div className="h-full w-1 bg-linear-to-b from-gray-300 to-gray-400"></div>
                       <div className="absolute text-xs text-gray-500 rotate-90 whitespace-nowrap">
                         Aisle
                       </div>
@@ -584,7 +568,7 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
                   {/* Exit Section */}
                   <div className="relative mt-8">
                     <div className="absolute left-1/2 transform -translate-x-1/2 bottom-0">
-                      <div className="bg-gradient-to-r from-red-500 to-red-600 text-white px-8 py-3 rounded-b-lg">
+                      <div className="bg-linear-to-r from-red-500 to-red-600 text-white px-8 py-3 rounded-b-lg">
                         <div className="flex items-center justify-center gap-2">
                           <Zap size={16} />
                           <span className="text-sm font-medium">Emergency Exit</span>
@@ -595,7 +579,7 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
                 </div>
 
                 {/* Special Seats Section */}
-                <div className="mt-8 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4">
+                <div className="mt-8 bg-linear-to-r from-indigo-50 to-purple-50 rounded-xl p-4">
                   <h4 className="font-bold text-gray-800 mb-3">Special Seats</h4>
                   <div className="grid grid-cols-4 gap-4">
                     {[
@@ -618,7 +602,7 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
             </div>
 
             {/* Right Column - Selection Summary */}
-            <div className="lg:col-span-1 bg-gradient-to-b from-gray-50 to-white border-l p-6 overflow-y-auto">
+            <div className="lg:col-span-1 bg-linear-to-b from-gray-50 to-white border-l p-6 overflow-y-auto">
               <div className="sticky top-0">
                 {/* Passenger Counter */}
                 <div className="bg-white rounded-xl p-4 mb-4 border border-gray-200">
@@ -661,9 +645,9 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
                   {selectedSeats.length > 0 ? (
                     <div className="space-y-3">
                       {selectedSeats.map((seat) => (
-                        <div key={seat.seatNumber} className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                        <div key={seat.seatNumber} className="flex items-center justify-between p-3 bg-linear-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-full bg-linear-to-br from-green-500 to-emerald-600 flex items-center justify-center">
                               <span className="text-white font-bold">{seat.seatNumber}</span>
                             </div>
                             <div>
@@ -728,7 +712,7 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
 
                 {/* Security & Info */}
                 <div className="space-y-3">
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
+                  <div className="bg-linear-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
                     <div className="flex items-center gap-3">
                       <Shield size={20} className="text-blue-600" />
                       <div>
@@ -738,7 +722,7 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
                     </div>
                   </div>
 
-                  <div className="bg-gradient-to-r from-yellow-50 to-amber-50 rounded-xl p-4 border border-yellow-200">
+                  <div className="bg-linear-to-r from-yellow-50 to-amber-50 rounded-xl p-4 border border-yellow-200">
                     <div className="flex items-center gap-3">
                       <AlertCircle size={20} className="text-yellow-600" />
                       <div>
@@ -758,7 +742,7 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
                   <button
                     onClick={handleProceed}
                     disabled={selectedSeats.length !== passengerCount}
-                    className="w-full bg-gradient-to-r from-[#295A55] via-[#3A7A72] to-[#295A55] text-white py-3 rounded-xl font-bold hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
+                    className="w-full bg-linear-to-r from-[#295A55] via-[#3A7A72] to-[#295A55] text-white py-3 rounded-xl font-bold hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
                   >
                     {selectedSeats.length === passengerCount ? (
                       <div className="flex items-center justify-center gap-2">
@@ -806,21 +790,21 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
                 </div>
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded bg-gradient-to-br from-green-500 to-emerald-600"></div>
+                    <div className="w-8 h-8 rounded bg-linear-to-br from-green-500 to-emerald-600"></div>
                     <div>
                       <div className="font-medium">Selected Seat</div>
                       <div className="text-sm text-gray-500">Your chosen seat</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded bg-gradient-to-br from-blue-50 to-indigo-100 border-2 border-blue-300"></div>
+                    <div className="w-8 h-8 rounded bg-linear-to-br from-blue-50 to-indigo-100 border-2 border-blue-300"></div>
                     <div>
                       <div className="font-medium">Window Seat</div>
                       <div className="text-sm text-gray-500">10% premium, better view</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200"></div>
+                    <div className="w-8 h-8 rounded bg-linear-to-br from-gray-50 to-gray-100 border-2 border-gray-200"></div>
                     <div>
                       <div className="font-medium">Aisle Seat</div>
                       <div className="text-sm text-gray-500">Easy access, standard price</div>
@@ -834,7 +818,7 @@ const SeatSelection = ({ bus, onClose, onProceedToBooking }) => {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded bg-gradient-to-br from-orange-400 to-red-500 animate-pulse"></div>
+                    <div className="w-8 h-8 rounded bg-linear-to-br from-orange-400 to-red-500 animate-pulse"></div>
                     <div>
                       <div className="font-medium">Processing</div>
                       <div className="text-sm text-gray-500">Selected by another user</div>

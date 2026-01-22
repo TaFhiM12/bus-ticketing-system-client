@@ -24,6 +24,7 @@ import {
 import axios from "axios";
 import SeatSelection from "./SeatSelection";
 import useAuth from "../hooks/useAuth";
+import Loading from "../shared/components/Loading";
 
 // Default filter values
 const DEFAULT_FILTERS = {
@@ -51,6 +52,10 @@ const BusSearchResults = () => {
     amenities: [],
     priceRange: { min: 0, max: 5000 }
   });
+
+  useEffect(() => {
+      document.title = "BUS VARA | Bus Search Results";
+    }, []);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedBus, setSelectedBus] = useState(null);
   const [showSeatSelection, setShowSeatSelection] = useState(false);
@@ -300,24 +305,11 @@ const BusSearchResults = () => {
   );
 
   if (authLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#295A55]"></div>
-      </div>
-    );
+    return <Loading/>
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-8 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#295A55]"></div>
-            <p className="mt-4 text-gray-600">Searching for buses...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <Loading/>
   }
 
   // Safe price range access
@@ -325,7 +317,7 @@ const BusSearchResults = () => {
   const availablePriceRangeMax = availableFilters.priceRange?.max || 5000;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-8 px-4">
+    <div className="min-h-screen bg-linear-to-b from-gray-50 to-gray-100 py-8 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -562,7 +554,7 @@ const BusSearchResults = () => {
                       <div className="flex flex-col lg:flex-row gap-6">
                         {/* Left Column - Timing & Route */}
                         <div className="lg:w-1/3">
-                          <div className="bg-gradient-to-r from-[#295A55] to-[#3A7A72] text-white rounded-lg p-4">
+                          <div className="bg-linear-to-r from-[#295A55] to-[#3A7A72] text-white rounded-lg p-4">
                             <div className="flex justify-between items-center mb-4">
                               <div className="text-center">
                                 <div className="text-2xl font-bold">
@@ -748,7 +740,7 @@ const BusSearchResults = () => {
                           <div className="space-y-3">
                             <button
                               onClick={() => handleBookNow(bus)}
-                              className="w-full bg-gradient-to-r from-[#295A55] to-[#3A7A72] text-white py-3 rounded-lg font-semibold hover:from-[#244D49] hover:to-[#346B64] transition-all shadow-md hover:shadow-lg"
+                              className="w-full bg-linear-to-r from-[#295A55] to-[#3A7A72] text-white py-3 rounded-lg font-semibold hover:from-[#244D49] hover:to-[#346B64] transition-all shadow-md hover:shadow-lg"
                             >
                               Book Now
                             </button>
@@ -919,7 +911,7 @@ const BusDetailsModal = ({ bus, onClose, onBookNow, formatTime, formatDate, getA
         </div>
         
         <div className="space-y-6">
-          <div className="bg-gradient-to-r from-[#295A55] to-[#3A7A72] text-white rounded-lg p-4">
+          <div className="bg-linear-to-r from-[#295A55] to-[#3A7A72] text-white rounded-lg p-4">
             <div className="flex justify-between items-center">
               <div className="text-center">
                 <div className="text-lg font-bold">{formatTime(bus.departureTime)}</div>

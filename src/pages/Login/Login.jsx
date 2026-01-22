@@ -13,6 +13,7 @@ import {
 import { FcGoogle } from "react-icons/fc";
 import { NavLink, useLocation, useNavigate } from "react-router";
 import useAuth from "../../hooks/useAuth";
+import { useEffect } from "react";
 
 const Login = () => {
   const { signInUser, signInWithGoogle } = useAuth();
@@ -21,6 +22,10 @@ const Login = () => {
   const location = useLocation();
   const from = location.state?.from || "/";
   const navigate = useNavigate();
+
+  useEffect(() => {
+      document.title = "BUS VARA | Login";
+    }, []);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;

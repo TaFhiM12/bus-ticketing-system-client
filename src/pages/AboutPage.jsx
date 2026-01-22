@@ -1,7 +1,11 @@
 import React from 'react';
 import { Bus } from 'lucide-react';
+import { useEffect } from 'react';
 
 const AboutPage = () => {
+    useEffect(() => {
+        document.title = "BUS VARA | About";
+      }, []);
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-4xl mx-auto px-4 py-16">

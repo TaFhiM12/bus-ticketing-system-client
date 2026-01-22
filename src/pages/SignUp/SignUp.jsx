@@ -14,6 +14,7 @@ import {
 import { FcGoogle } from "react-icons/fc";
 import { NavLink } from "react-router";
 import useAuth from "../../hooks/useAuth";
+import { useEffect } from "react";
 
 const API_URL = "http://localhost:5001";
 
@@ -28,6 +29,10 @@ const Signup = () => {
     confirmPassword: "",
     agreeToTerms: false,
   });
+
+  useEffect(() => {
+      document.title = "BUS VARA | Sign Up";
+    }, []);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
